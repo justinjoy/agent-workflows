@@ -1,0 +1,16 @@
+# OMC runtime state (project-scoped skills are the committable exception)
+.omc/
+!.omc/skills/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
+
+# Logs / temp
+*.log
+*.tmp
