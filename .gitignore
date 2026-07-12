@@ -1,6 +1,5 @@
-# OMC runtime state (project-scoped skills are the committable exception)
+# OMC runtime state
 .omc/
-!.omc/skills/
 
 # OS
 .DS_Store
