@@ -14,7 +14,7 @@ Use this skill for substantial code changes where correctness depends on explici
 - **Implementer**: make changes in atomic commit-sized units with focused validation.
 - **Reviewer**: review the Implementer's changes for bugs, regressions, missing tests, and scope creep.
 
-Subagents are allowed when available. Use them to run independent Architect, Critic, Implementer, or Reviewer passes when the task is large enough to benefit from separation.
+Each role runs as its own subagent. The main agent owns this skill, sequences the passes, and integrates results; it does not perform a role pass itself. Dispatch every Architect, Critic, Implementer, and Reviewer pass to a dedicated subagent so each role reasons from its own context and cannot rationalize a prior role's conclusion. See [Subagent Use](#subagent-use) for dispatch rules and the fallback when subagents are unavailable.
 
 ## Workflow
 
@@ -33,7 +33,7 @@ Protect unrelated work. Do not stage, revert, or modify unrelated files.
 
 ### 2. Architect Pass
 
-Produce a short implementation plan before editing when the change is non-trivial. The Architect should identify:
+Dispatch an Architect subagent to produce a short implementation plan before any editing. Give it the intake findings and the objective; do not give it a plan to confirm. The Architect should identify:
 
 - the user-visible behavior to change
 - affected modules and ownership boundaries
@@ -46,7 +46,7 @@ Prefer the repository's existing patterns. Avoid broad refactors unless required
 
 ### 3. Critic Pass
 
-Before implementation, have the Critic challenge the Architect plan. The Critic should look for:
+Dispatch a Critic subagent to attack the Architect plan before implementation. Pass it the plan and the repository context, not the Architect's justification for the plan. The Critic should look for:
 
 - hidden coupling between modules
 - unsafe assumptions about state, concurrency, persistence, or external services
@@ -58,7 +58,7 @@ Resolve Critic objections before implementation. If Architect and Critic disagre
 
 ### 4. Implementer Pass
 
-Implement in atomic units. An atomic unit should:
+Dispatch an Implementer subagent per atomic unit, giving it the agreed plan and that unit's boundary. Run implementer subagents sequentially when units touch shared files; run them concurrently only when their file sets are disjoint. An atomic unit should:
 
 - have one behavioral purpose
 - be reviewable independently
@@ -76,7 +76,7 @@ Do not batch unrelated fixes into the same commit. If a necessary prerequisite a
 
 ### 5. Reviewer Pass
 
-Review the Implementer's diff before declaring work complete. The Reviewer should use a code-review stance:
+Dispatch a Reviewer subagent to review the Implementer's diff before declaring work complete. The Reviewer must be a fresh subagent that did not write the code — never the Implementer subagent, and never the main agent. Give it the diff and the objective, not the Implementer's account of what it did. The Reviewer should use a code-review stance:
 
 - findings first, ordered by severity
 - cite concrete files/lines where possible
@@ -87,7 +87,7 @@ If issues are found, send the work back to Implementer for another atomic fix an
 
 ### 6. Architect and Critic Validation
 
-After Reviewer approval, the Architect and Critic must both validate the final diff against the original goal.
+After Reviewer approval, dispatch Architect and Critic subagents to validate the final diff against the original goal. Reuse the original Architect and Critic subagents so they carry their own prior reasoning; if they are gone, dispatch fresh ones with the original plan and the recorded objections.
 
 The Architect confirms:
 
@@ -105,26 +105,28 @@ The task is complete only when Reviewer, Architect, and Critic agree there are n
 
 ## Subagent Use
 
-Use subagents when separation improves quality or when the user explicitly permits it. Good uses:
+Every role pass is a subagent dispatch. The separation is the point: a role that inherits another role's reasoning will agree with it, which defeats the critique and review gates.
 
-- ask an Architect subagent for a design plan from repository context
-- ask a Critic subagent to attack the plan before edits
-- ask a Reviewer subagent to review the final diff independently
-- ask an Implementer subagent to handle a clearly bounded atomic unit
+Dispatch rules:
 
-Keep subagent prompts scoped. Provide raw artifacts and the target objective, not the expected answer. Do not delegate reading skill instructions; the main agent remains responsible for applying this skill.
+- One subagent per role pass. Do not merge Architect and Critic into one call, or let the Implementer review its own diff.
+- Keep prompts scoped. Provide raw artifacts (plan, diff, test output, objective) and let the subagent reach its own conclusion. Never state the expected answer or the prior role's rationale.
+- Have each subagent return findings the main agent can act on: the plan, the objection list, the diff and validation results, or the ordered review findings.
+- The main agent sequences passes, resolves disagreements, and reports to the user. It does not perform role passes.
+- Do not delegate reading skill instructions. The main agent remains responsible for applying this skill.
 
-If subagents are unavailable, simulate the roles sequentially in the main thread and label the role outputs clearly.
+If subagents are unavailable, say so explicitly in the final response, then simulate the roles sequentially in the main thread with clearly labeled role outputs. This is a degraded mode: the reviewer and critic gates are weaker because one context produces both the work and its critique, so weight their approval accordingly.
 
 ## Completion Checklist
 
 Before final response, verify:
 
+- Each role pass ran as its own subagent, or the degraded single-thread mode was declared.
 - Architect plan was considered.
 - Critic risks were addressed or explicitly accepted.
 - Implementation was divided into atomic commit-sized changes.
 - Tests or validation were run and reported.
-- Reviewer checked the final diff.
+- Reviewer checked the final diff and did not write the code under review.
 - Architect and Critic agreed the result satisfies the goal.
 - Unrelated untracked or modified files were not included.
 
