@@ -1,22 +1,33 @@
 # Agent Workflows
 
-Shared agent skills for Codex and Claude Code.
+Shared agent skills for Codex, Claude Code, and Antigravity.
 
 ## Layout
 
 ```text
 .agents/plugins/marketplace.json
 .claude-plugin/marketplace.json
+.antigravity-plugin/marketplace.json
+.gemini-plugin/marketplace.json
 plugins/dev-workflows/
   .codex-plugin/plugin.json
   .claude-plugin/plugin.json
+  .antigravity-plugin/plugin.json
+  .gemini-plugin/plugin.json
   skills/
     implementation-skill/
       SKILL.md
       agents/openai.yaml
+      agents/gemini.yaml
+      agents/antigravity.yaml
+    close-open-issues-goal/
+      SKILL.md
+      agents/openai.yaml
+      agents/gemini.yaml
+      agents/antigravity.yaml
 ```
 
-The `skills/` directory is shared by both plugin manifests so each skill is maintained once.
+The `skills/` directory is shared by all plugin manifests so each skill is maintained once.
 
 ## Codex
 
@@ -43,6 +54,31 @@ After installing, run `/reload-plugins` or start a new Claude Code session. Plug
 /dev-workflows:implementation-skill
 ```
 
+## Antigravity
+
+Add this repository as an Antigravity plugin marketplace:
+
+```bash
+agy plugin marketplace add /Users/joykim/git/agent-workflows
+```
+
+Or within an Antigravity session (CLI or IDE):
+
+```text
+/plugin marketplace add /Users/joykim/git/agent-workflows
+/plugin install dev-workflows@agent-workflows
+```
+
+After installing, the implementation workflow can be invoked as:
+
+```text
+/dev-workflows:implementation-skill
+```
+or directly by skill name:
+```text
+implementation-skill
+```
+
 ## Updating Skills
 
-Update files under `plugins/dev-workflows/skills/`. Keep provider-specific metadata in the corresponding `.codex-plugin/` or `.claude-plugin/` manifest.
+Update files under `plugins/dev-workflows/skills/`. Keep provider-specific metadata in the corresponding `.codex-plugin/`, `.claude-plugin/`, `.antigravity-plugin/`, or `.gemini-plugin/` manifest.

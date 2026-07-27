@@ -1,0 +1,18 @@
+{
+  "name": "dev-workflows",
+  "version": "1.0.0",
+  "description": "Reusable development workflow skills for implementation, review, and release work.",
+  "author": {
+    "name": "joykim"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Dev Workflows",
+    "shortDescription": "Reusable implementation and review workflows.",
+    "longDescription": "Dev Workflows packages reusable agent skills for structured software implementation, critique, validation, and review.",
+    "developerName": "joykim",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "Use the implementation skill for this change."
+  }
+}

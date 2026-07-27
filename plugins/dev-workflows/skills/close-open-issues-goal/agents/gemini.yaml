@@ -1,0 +1,4 @@
+interface:
+  display_name: "Close Open Issues Goal"
+  short_description: "Create a goal to resolve all open issues"
+  default_prompt: "Use /close-open-issues-goal (or close-open-issues-goal) to create the open-issues resolution goal."

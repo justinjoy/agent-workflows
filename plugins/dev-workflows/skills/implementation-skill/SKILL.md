@@ -1,6 +1,6 @@
 ---
 name: implementation-skill
-description: Host-neutral workflow for non-trivial changes requiring independent architecture, critique, implementation, review, atomic commits, and consensus. Invoke as $dev-workflows:implementation-skill in Codex or /dev-workflows:implementation-skill in Claude Code.
+description: Host-neutral workflow for non-trivial changes requiring independent architecture, critique, implementation, review, atomic commits, and consensus. Invoke as $dev-workflows:implementation-skill in Codex, /dev-workflows:implementation-skill in Claude Code, or /dev-workflows:implementation-skill (or implementation-skill) in Antigravity.
 ---
 
 # Implementation Skill
@@ -14,7 +14,7 @@ Use this skill for substantial code changes where correctness depends on explici
 - **Implementer**: make changes in atomic commit-sized units with focused validation.
 - **Reviewer**: review the Implementer's changes for bugs, regressions, missing tests, and scope creep.
 
-In Codex, invoke this skill as `$dev-workflows:implementation-skill`; in Claude Code, invoke it as `/dev-workflows:implementation-skill`.
+In Codex, invoke this skill as `$dev-workflows:implementation-skill`; in Claude Code or Antigravity, invoke it as `/dev-workflows:implementation-skill` (or `implementation-skill`).
 
 Use the host's native independent agents for every role pass when they are available. The coordinating agent sequences the passes and integrates their raw artifacts; it does not substitute its own role pass. Architect and Critic must be independent of one another, and a Reviewer must not be the agent that wrote the code. See [Agent Use and Degraded Mode](#agent-use-and-degraded-mode) for the required fallback.
 

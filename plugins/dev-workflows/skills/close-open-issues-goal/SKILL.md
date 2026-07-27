@@ -13,7 +13,7 @@ Create the goal only. Do not inspect, prioritize, implement, close, or create re
 2. Create a goal with this objective, adapting only the repository identifier when the user supplied one:
 
    ```text
-   Reduce the current repository's open issue count to zero. Select the highest-priority open issue first and resolve it using $dev-workflows:implementation-skill. When new work is discovered, have Architect and Critic discuss it, then register a self-contained follow-up issue containing scope, reproduction or discovery context, and acceptance criteria.
+   Reduce the current repository's open issue count to zero. Select the highest-priority open issue first and resolve it using /dev-workflows:implementation-skill (or $dev-workflows:implementation-skill). When new work is discovered, have Architect and Critic discuss it, then register a self-contained follow-up issue containing scope, reproduction or discovery context, and acceptance criteria.
    ```
 
 3. Do not set `token_budget` unless the user explicitly provides one.

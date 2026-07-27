@@ -1,0 +1,23 @@
+{
+  "name": "agent-workflows",
+  "interface": {
+    "displayName": "Agent Workflows"
+  },
+  "owner": {
+    "name": "joykim"
+  },
+  "description": "Reusable agent workflow plugins for Antigravity and Gemini CLI.",
+  "plugins": [
+    {
+      "name": "dev-workflows",
+      "source": "./plugins/dev-workflows",
+      "description": "Reusable implementation and review workflow skills.",
+      "version": "1.0.0",
+      "author": {
+        "name": "joykim"
+      },
+      "category": "Productivity",
+      "tags": ["development", "implementation", "review"]
+    }
+  ]
+}
