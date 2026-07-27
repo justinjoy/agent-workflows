@@ -1,4 +1,4 @@
 interface:
   display_name: "Implementation Skill"
   short_description: "Role-gated implementation workflow"
-  default_prompt: "Use Implementation Skill to plan, implement, review, and validate this change with architect, critic, implementer, and reviewer roles."
+  default_prompt: "Use $dev-workflows:implementation-skill to plan, implement, review, and validate this change with architect, critic, implementer, and reviewer roles."
