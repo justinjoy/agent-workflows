@@ -112,6 +112,6 @@
   <text class="muted" x="765" y="670" text-anchor="middle">design + risk</text>
 
   <path class="feedback" d="M930 700 C855 970 345 970 270 700"/>
-  <rect class="feedbackCard" x="468" y="900" width="264" height="40"/>
+  <rect class="feedbackCard" x="430" y="900" width="340" height="40"/>
   <text class="small" x="600" y="925" text-anchor="middle">blocking findings loop back to implementation</text>
 </svg>
