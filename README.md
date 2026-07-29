@@ -9,6 +9,7 @@ Shared agent skills for Codex, Claude Code, and Antigravity.
 
 ## Docs
 
+- [How it works](docs/how-it-works.md)
 - [Installation](docs/installation.md)
 - [Maintenance](docs/maintenance.md)
 
