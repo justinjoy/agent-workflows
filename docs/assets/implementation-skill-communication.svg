@@ -68,9 +68,9 @@
   <text class="body" x="990" y="656" text-anchor="middle">findings against</text>
   <text class="body" x="990" y="676" text-anchor="middle">the raw diff</text>
 
-  <rect class="gate" x="475" y="740" width="250" height="76"/>
-  <text class="label" x="600" y="770" text-anchor="middle">Final Gate</text>
-  <text class="body" x="600" y="794" text-anchor="middle">Architect + Critic validate</text>
+  <rect class="gate" x="475" y="760" width="250" height="76"/>
+  <text class="label" x="600" y="790" text-anchor="middle">Final Gate</text>
+  <text class="body" x="600" y="814" text-anchor="middle">Architect + Critic validate</text>
 
   <path class="send" d="M585 208 C560 276 560 332 580 378"/>
   <path class="return" d="M623 388 C655 326 650 272 616 208"/>
@@ -92,18 +92,18 @@
 
   <path class="send" d="M470 492 C405 526 366 584 330 630"/>
   <path class="return" d="M330 662 C400 624 430 554 470 510"/>
-  <rect class="card" x="284" y="724" width="170" height="58"/>
-  <text class="small" x="369" y="748" text-anchor="middle">Implementer</text>
-  <text class="muted" x="369" y="768" text-anchor="middle">unit -> diff + tests</text>
+  <rect class="card" x="340" y="694" width="170" height="58"/>
+  <text class="small" x="425" y="718" text-anchor="middle">Implementer</text>
+  <text class="muted" x="425" y="738" text-anchor="middle">unit -> diff + tests</text>
 
   <path class="send" d="M730 492 C795 526 834 584 870 630"/>
   <path class="return" d="M870 662 C800 624 770 554 730 510"/>
-  <rect class="card" x="746" y="724" width="170" height="58"/>
-  <text class="small" x="831" y="748" text-anchor="middle">Reviewer</text>
-  <text class="muted" x="831" y="768" text-anchor="middle">raw diff -> findings</text>
+  <rect class="card" x="690" y="694" width="170" height="58"/>
+  <text class="small" x="775" y="718" text-anchor="middle">Reviewer</text>
+  <text class="muted" x="775" y="738" text-anchor="middle">raw diff -> findings</text>
 
-  <path class="send" d="M585 516 C565 584 570 676 590 730"/>
-  <path class="return" d="M620 516 C646 584 644 676 614 730"/>
+  <path class="send" d="M585 516 C565 590 570 696 590 750"/>
+  <path class="return" d="M620 516 C646 590 644 696 614 750"/>
   <rect class="card" x="360" y="626" width="150" height="58"/>
   <text class="small" x="435" y="650" text-anchor="middle">Final check</text>
   <text class="muted" x="435" y="670" text-anchor="middle">final diff</text>
@@ -111,7 +111,7 @@
   <text class="small" x="765" y="650" text-anchor="middle">Validation</text>
   <text class="muted" x="765" y="670" text-anchor="middle">design + risk</text>
 
-  <path class="feedback" d="M870 690 C780 930 420 930 330 690"/>
+  <path class="feedback" d="M930 700 C855 970 345 970 270 700"/>
   <rect class="feedbackCard" x="468" y="900" width="264" height="40"/>
   <text class="small" x="600" y="925" text-anchor="middle">blocking findings loop back to implementation</text>
 </svg>
