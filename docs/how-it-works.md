@@ -8,32 +8,7 @@ Use it when a change is large enough that mistakes could come from weak planning
 
 ## Persona Communication
 
-```mermaid
-flowchart TD
-  User[User] -->|request and constraints| Coordinator[Coordinator]
-
-  Coordinator -->|repo context + objective| Architect[Architect]
-  Architect -->|implementation plan| Coordinator
-
-  Coordinator -->|plan + repo context| Critic[Critic]
-  Critic -->|objections and risks| Coordinator
-
-  Coordinator -->|resolved plan + atomic unit| Implementer[Implementer]
-  Implementer -->|diff + validation output| Coordinator
-
-  Coordinator -->|raw diff + objective| Reviewer[Reviewer]
-  Reviewer -->|findings| Coordinator
-
-  Reviewer -->|blocking findings| Implementer
-  Implementer -->|fix diff + validation output| Coordinator
-
-  Coordinator -->|final diff + original plan| Architect
-  Coordinator -->|final diff + prior objections| Critic
-  Architect -->|design validation| Coordinator
-  Critic -->|risk validation| Coordinator
-
-  Coordinator -->|commits, validation, residual risks| User
-```
+![Implementation Skill persona communication diagram](assets/implementation-skill-communication.svg)
 
 The Coordinator is the communication hub. It gathers repository context, sends each persona only the artifact needed for that role, resolves disagreements, and keeps unrelated work out of scope.
 

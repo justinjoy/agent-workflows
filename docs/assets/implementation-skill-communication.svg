@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">Implementation Skill persona communication flow</title>
+  <desc id="desc">A diagram showing the User, Coordinator, Architect, Critic, Implementer, and Reviewer personas communicating through explicit artifacts such as plans, objections, diffs, validation output, findings, and final reports.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
+    </marker>
+    <marker id="accentArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#b45309"/>
+    </marker>
+    <style>
+      .bg { fill: #f8fafc; }
+      .hub { fill: #e0f2fe; stroke: #0284c7; stroke-width: 2.5; rx: 14; }
+      .persona { fill: #f1f5f9; stroke: #64748b; stroke-width: 2; rx: 12; }
+      .user { fill: #ecfccb; stroke: #65a30d; stroke-width: 2; rx: 12; }
+      .gate { fill: #fffbeb; stroke: #d97706; stroke-width: 2; rx: 12; }
+      .chip { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.4; rx: 8; }
+      .chipAccent { fill: #fff7ed; stroke: #fb923c; stroke-width: 1.4; rx: 8; }
+      .title { fill: #0f172a; font-family: Arial, sans-serif; font-size: 30px; font-weight: 700; }
+      .subtitle { fill: #475569; font-family: Arial, sans-serif; font-size: 16px; }
+      .label { fill: #0f172a; font-family: Arial, sans-serif; font-size: 20px; font-weight: 700; }
+      .body { fill: #334155; font-family: Arial, sans-serif; font-size: 14px; }
+      .small { fill: #1e293b; font-family: Arial, sans-serif; font-size: 13px; font-weight: 600; }
+      .edge { stroke: #334155; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
+      .edgeBack { stroke: #334155; stroke-width: 2.2; fill: none; marker-end: url(#arrow); stroke-dasharray: 6 6; }
+      .edgeAccent { stroke: #b45309; stroke-width: 2.4; fill: none; marker-end: url(#accentArrow); }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1200" height="760"/>
+
+  <text class="title" x="48" y="58">Implementation Skill: persona communication</text>
+  <text class="subtitle" x="48" y="84">Each persona receives a scoped artifact, returns a raw artifact, and stays independent from the other roles.</text>
+
+  <rect class="user" x="500" y="112" width="200" height="78"/>
+  <text class="label" x="600" y="145" text-anchor="middle">User</text>
+  <text class="body" x="600" y="169" text-anchor="middle">request, constraints</text>
+
+  <rect class="hub" x="464" y="304" width="272" height="118"/>
+  <text class="label" x="600" y="346" text-anchor="middle">Coordinator</text>
+  <text class="body" x="600" y="372" text-anchor="middle">routes artifacts</text>
+  <text class="body" x="600" y="394" text-anchor="middle">resolves disagreements</text>
+
+  <rect class="persona" x="72" y="194" width="230" height="104"/>
+  <text class="label" x="187" y="234" text-anchor="middle">Architect</text>
+  <text class="body" x="187" y="260" text-anchor="middle">design, scope, tests,</text>
+  <text class="body" x="187" y="280" text-anchor="middle">atomic plan</text>
+
+  <rect class="persona" x="898" y="194" width="230" height="104"/>
+  <text class="label" x="1013" y="234" text-anchor="middle">Critic</text>
+  <text class="body" x="1013" y="260" text-anchor="middle">risks, coupling,</text>
+  <text class="body" x="1013" y="280" text-anchor="middle">unsafe assumptions</text>
+
+  <rect class="persona" x="72" y="506" width="230" height="104"/>
+  <text class="label" x="187" y="546" text-anchor="middle">Implementer</text>
+  <text class="body" x="187" y="572" text-anchor="middle">diffs, validation,</text>
+  <text class="body" x="187" y="592" text-anchor="middle">atomic commits</text>
+
+  <rect class="persona" x="898" y="506" width="230" height="104"/>
+  <text class="label" x="1013" y="546" text-anchor="middle">Reviewer</text>
+  <text class="body" x="1013" y="572" text-anchor="middle">findings against</text>
+  <text class="body" x="1013" y="592" text-anchor="middle">the raw diff</text>
+
+  <rect class="gate" x="478" y="584" width="244" height="82"/>
+  <text class="label" x="600" y="618" text-anchor="middle">Final Gate</text>
+  <text class="body" x="600" y="642" text-anchor="middle">Architect + Critic</text>
+
+  <path class="edge" d="M586 190 L586 294"/>
+  <path class="edgeBack" d="M614 304 L614 200"/>
+  <rect class="chip" x="466" y="222" width="110" height="32"/>
+  <text class="small" x="521" y="243" text-anchor="middle">request</text>
+  <rect class="chip" x="626" y="222" width="110" height="32"/>
+  <text class="small" x="681" y="243" text-anchor="middle">final report</text>
+
+  <path class="edge" d="M464 326 C390 286 374 246 312 246"/>
+  <path class="edgeBack" d="M302 274 C370 322 394 360 454 360"/>
+  <rect class="chip" x="314" y="202" width="138" height="32"/>
+  <text class="small" x="383" y="223" text-anchor="middle">objective + context</text>
+  <rect class="chip" x="326" y="374" width="116" height="32"/>
+  <text class="small" x="384" y="395" text-anchor="middle">plan</text>
+
+  <path class="edge" d="M736 326 C810 286 826 246 888 246"/>
+  <path class="edgeBack" d="M898 274 C830 322 806 360 746 360"/>
+  <rect class="chip" x="744" y="202" width="116" height="32"/>
+  <text class="small" x="802" y="223" text-anchor="middle">plan</text>
+  <rect class="chip" x="754" y="374" width="142" height="32"/>
+  <text class="small" x="825" y="395" text-anchor="middle">objections + risks</text>
+
+  <path class="edge" d="M464 394 C386 428 358 548 312 558"/>
+  <path class="edgeBack" d="M302 532 C370 478 392 414 454 386"/>
+  <rect class="chip" x="312" y="438" width="150" height="32"/>
+  <text class="small" x="387" y="459" text-anchor="middle">resolved unit</text>
+  <rect class="chip" x="308" y="626" width="168" height="32"/>
+  <text class="small" x="392" y="647" text-anchor="middle">diff + validation</text>
+
+  <path class="edge" d="M736 394 C814 428 842 548 888 558"/>
+  <path class="edgeBack" d="M898 532 C830 478 808 414 746 386"/>
+  <rect class="chip" x="742" y="438" width="152" height="32"/>
+  <text class="small" x="818" y="459" text-anchor="middle">raw diff</text>
+  <rect class="chip" x="728" y="626" width="152" height="32"/>
+  <text class="small" x="804" y="647" text-anchor="middle">findings</text>
+
+  <path class="edgeAccent" d="M898 596 C720 716 474 716 302 596"/>
+  <rect class="chipAccent" x="454" y="696" width="292" height="34"/>
+  <text class="small" x="600" y="718" text-anchor="middle">blocking findings loop back to implementation</text>
+
+  <path class="edge" d="M600 422 L600 574"/>
+  <rect class="chip" x="626" y="490" width="118" height="32"/>
+  <text class="small" x="685" y="511" text-anchor="middle">final diff</text>
+
+  <path class="edgeBack" d="M488 616 C386 596 318 368 292 298"/>
+  <path class="edgeBack" d="M712 616 C814 596 882 368 908 298"/>
+  <rect class="chip" x="330" y="566" width="130" height="32"/>
+  <text class="small" x="395" y="587" text-anchor="middle">design check</text>
+  <rect class="chip" x="740" y="566" width="116" height="32"/>
+  <text class="small" x="798" y="587" text-anchor="middle">risk check</text>
+</svg>
