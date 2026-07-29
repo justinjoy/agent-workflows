@@ -82,3 +82,7 @@ implementation-skill
 ## Updating Skills
 
 Update files under `plugins/dev-workflows/skills/`. Keep provider-specific metadata in the corresponding `.codex-plugin/`, `.claude-plugin/`, `.antigravity-plugin/`, or `.gemini-plugin/` manifest.
+
+## License
+
+APACHE-2.0

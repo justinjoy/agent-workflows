@@ -2,6 +2,7 @@
   "name": "dev-workflows",
   "description": "Reusable development workflow skills for implementation, review, and release work.",
   "version": "1.0.0",
+  "license": "APACHE-2.0",
   "author": {
     "name": "joykim"
   }
