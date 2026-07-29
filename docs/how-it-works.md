@@ -56,3 +56,18 @@ Use `implementation-skill` for:
 - PR feedback that requires implementation and review
 
 For small edits, direct implementation is usually enough.
+
+## Close Open Issues Goal
+
+Explicitly invoke `$dev-workflows:close-open-issues-goal` or `/dev-workflows:close-open-issues-goal` (the host-specific form) only when you want to create, set, or start the persistent goal for reducing the current repository's open issue count to zero. Invocation creates the goal only: that same turn must not inspect or prioritize issues, implement work, close issues, or create issues unless those actions are separately requested.
+
+When the goal is later executed, begin with the highest-priority open issue and resolve it using `$dev-workflows:implementation-skill` or `/dev-workflows:implementation-skill`. Work discovered while resolving an issue becomes a follow-up issue only after Architect and Critic have assessed it.
+
+Each follow-up issue records:
+
+- scope and intended outcome;
+- discovery context or reproducible steps;
+- acceptance criteria;
+- priority rationale and dependencies, when known.
+
+The goal has no default token budget; one is supplied only when explicitly requested. If another goal is already active, report that constraint and ask the user how to proceed. Do not replace, complete, or block the existing goal merely to create this one.
