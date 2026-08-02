@@ -13,3 +13,13 @@ Thumbs.db
 # Logs / temp
 *.log
 *.tmp
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+build/
+dist/
+*.egg-info/
