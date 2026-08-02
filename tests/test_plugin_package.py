@@ -161,6 +161,37 @@ def test_claude_marketplace_points_to_shared_lifecycle_skill_layout():
     assert "approved_candidate_tree" in commit
 
 
+def test_antigravity_plugin_root_exposes_shared_lifecycle_skills():
+    plugin_root = ROOT / "plugins" / "dev-workflows"
+    manifest = _json(plugin_root / "plugin.json")
+
+    assert set(manifest) == {"$schema", "name", "description"}
+    assert manifest["$schema"] == "https://antigravity.google/schemas/v1/plugin.json"
+    assert manifest["name"] == "dev-workflows"
+    assert "mandatory review" in manifest["description"]
+    assert "Architect/Critic approval" in manifest["description"]
+    assert "verified atomic commits" in manifest["description"]
+
+    skill_root = plugin_root / "skills"
+    implementation = (skill_root / "implementation-skill" / "SKILL.md").read_text(
+        encoding="utf-8"
+    )
+    commit = (skill_root / "commit-atomic-change" / "SKILL.md").read_text(
+        encoding="utf-8"
+    )
+    prompt = (
+        skill_root / "implementation-skill" / "agents" / "antigravity.yaml"
+    ).read_text(encoding="utf-8")
+
+    assert "including documentation-only and trivial changes" in implementation
+    assert "Reviewer, Architect, and Critic approve" in implementation
+    assert "approved_candidate_tree" in commit
+    assert "/dev-workflows:implementation-skill" in prompt
+    assert "independent review" in prompt
+    assert "Architect/Critic approval" in prompt
+    assert "verified atomic commit" in prompt
+
+
 def test_package_metadata_uses_wirelog_terminology():
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     module_docstring = (
@@ -210,6 +241,7 @@ def test_built_artifacts_match_runtime_and_plugin_distribution_contract(tmp_path
         ".antigravity-plugin/marketplace.json",
         ".claude-plugin/marketplace.json",
         ".gemini-plugin/marketplace.json",
+        "plugins/dev-workflows/plugin.json",
         "plugins/dev-workflows/skills/report-result/SKILL.md",
         "plugins/dev-workflows/skills/commit-atomic-change/SKILL.md",
     }

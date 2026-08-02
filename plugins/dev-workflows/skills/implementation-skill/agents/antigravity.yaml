@@ -1,4 +1,4 @@
 interface:
   display_name: "Implementation Skill"
-  short_description: "Wirelog-selected implementation workflow"
-  default_prompt: "Use /dev-workflows:implementation-skill (or implementation-skill) to select an atomic workflow with Wirelog, then implement and validate this change."
+  short_description: "Reviewed and verified Wirelog implementation workflow"
+  default_prompt: "Use /dev-workflows:implementation-skill to select an atomic workflow with Wirelog, then test it, obtain independent review and Architect/Critic approval, and create the verified atomic commit."

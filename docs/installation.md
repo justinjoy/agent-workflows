@@ -73,25 +73,41 @@ this local check does not verify marketplace update propagation.
 
 ### Antigravity
 
-Add the marketplace with the CLI:
+Clone this repository, then install the Antigravity plugin from its package
+root:
 
 ```bash
-agy plugin marketplace add https://github.com/justinjoy/agent-workflows.git
+git clone https://github.com/justinjoy/agent-workflows.git
+cd agent-workflows
+agy plugin validate ./plugins/dev-workflows
+agy plugin install ./plugins/dev-workflows
 ```
 
-Or add it and install the plugin from an Antigravity CLI or IDE session:
+Start a new Antigravity session:
+
+```bash
+agy
+```
+
+Then open `/skills` to verify that the plugin's skills were discovered:
 
 ```text
-/plugin marketplace add https://github.com/justinjoy/agent-workflows.git
-/plugin install dev-workflows@agent-workflows
+/skills
 ```
 
-Invoke the workflow with either supported form:
+Invoke the namespaced workflow with:
 
 ```text
 /dev-workflows:implementation-skill
-implementation-skill
 ```
+
+Antigravity discovers the official `plugin.json` at the installed package root
+and loads the shared sibling `skills/` directory. The same
+`implementation-skill` used by the other hosts therefore enforces focused
+tests, independent review, Architect and Critic approval of the immutable
+candidate, and a verified atomic commit. Installing the repository URL itself
+is not used here because this repository is a multi-host monorepo and the
+Antigravity plugin root is `plugins/dev-workflows`.
 
 ## Install the Wirelog Harness
 
