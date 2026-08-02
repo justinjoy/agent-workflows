@@ -45,7 +45,12 @@ selected_skill(50, 5, 5) :-
     request_type(Req, "code_change").
 
 selected_skill(60, 6, 6) :-
-    request_type(Req, "code_change").
+    request_type(Req, "code_change"),
+    !property(Req, "docs_only").
+
+selected_skill(60, 6, 12) :-
+    request_type(Req, "code_change"),
+    property(Req, "docs_only").
 
 selected_skill(70, 7, 7) :-
     request_type(Req, "code_change"),

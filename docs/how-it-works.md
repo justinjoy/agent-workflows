@@ -49,9 +49,13 @@ facts fail with an input error. If a request contains both `trivial` and concret
 risk evidence such as `non_trivial`, shared behavior, external services, or
 multi-file scope, the risk evidence wins and the trivial hint is removed.
 
-Documentation-only requests still select `implement-atomic-change` and focused
-validation; they skip planning and review only when no separate risk fact
-requires those gates.
+Documentation-only requests still select `implement-atomic-change` and a
+documentation-specific focused-validation reason. They skip planning and review
+only when no separate risk fact requires those gates. Multi-file or explicitly
+non-trivial documentation may still select the larger workflow, while
+`docs_only` combined with external-service or shared-behavior impact is rejected
+as contradictory input. Requests with no risk or documentation facts fail
+closed to `non_trivial`.
 
 Use `--decision-log path/to/decisions.jsonl` to append the request facts,
 selected skills, blocked skills, and rule reasons as durable JSON Lines records.

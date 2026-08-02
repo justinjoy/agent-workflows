@@ -37,11 +37,13 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     request_text = " ".join(args.request)
     try:
-        facts = classify_request(request_text) if request_text else RequestFacts()
-        if args.property:
-            facts = RequestFacts.from_properties(
-                set(facts.properties).union(args.property)
+        if request_text or args.property:
+            properties = (
+                set(classify_request(request_text).properties) if request_text else set()
             )
+            facts = RequestFacts.from_properties(properties.union(args.property))
+        else:
+            facts = RequestFacts()
     except ValueError as exc:
         parser.error(str(exc))
 

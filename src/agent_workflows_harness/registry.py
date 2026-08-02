@@ -38,6 +38,7 @@ REASON_BY_CODE = {
     9: "planned_change_requires_architect_validation",
     10: "planned_change_requires_critic_validation",
     11: "every_harness_run_reports_outcome",
+    12: "documentation_change_requires_focused_validation",
     101: "risk_facts_do_not_require_explicit_plan",
     102: "no_plan_selected",
     103: "no_shared_or_cross_module_behavior_fact",

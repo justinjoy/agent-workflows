@@ -107,6 +107,30 @@ def test_docs_only_change_still_selects_implementation():
         "run-focused-tests",
         "report-result",
     ]
+    focused = next(skill for skill in plan.selected if skill.skill_id == "run-focused-tests")
+    assert focused.reason == "documentation_change_requires_focused_validation"
+
+
+def test_docs_only_policy_handles_risk_and_rejects_code_impact():
+    planned_docs = RequestFacts.from_properties({"docs_only", "non_trivial"})
+    multi_file_docs = RequestFacts.from_properties({"docs_only", "multi_file"})
+
+    assert "create-implementation-plan" in _ids(planned_docs)
+    assert "run-broad-tests" in _ids(multi_file_docs)
+    for conflicting in ("external_service", "touches_shared_behavior"):
+        try:
+            RequestFacts.from_properties({"docs_only", conflicting})
+        except ValueError as exc:
+            assert "docs_only conflicts" in str(exc)
+        else:  # pragma: no cover
+            raise AssertionError(f"expected docs_only + {conflicting} to fail")
+
+
+def test_empty_facts_fail_closed_to_non_trivial_plan():
+    facts = RequestFacts()
+
+    assert facts.properties == frozenset({"non_trivial"})
+    assert "create-implementation-plan" in _ids(facts)
 
 
 def test_risk_facts_override_trivial_hint():

@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
+import tarfile
 import tomllib
+import zipfile
 from pathlib import Path
 
 
@@ -61,3 +65,44 @@ def test_source_distribution_manifest_includes_plugin_assets():
     assert "include .antigravity-plugin/marketplace.json" in manifest
     assert "include .claude-plugin/marketplace.json" in manifest
     assert "include .gemini-plugin/marketplace.json" in manifest
+
+
+def test_built_artifacts_match_runtime_and_plugin_distribution_contract(tmp_path):
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "build",
+            "--no-isolation",
+            "--outdir",
+            str(tmp_path),
+            str(ROOT),
+        ],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+    sdist = next(tmp_path.glob("agent_workflows-*.tar.gz"))
+    wheel = next(tmp_path.glob("agent_workflows-*.whl"))
+
+    with tarfile.open(sdist, "r:gz") as archive:
+        sdist_members = set(archive.getnames())
+    required_suffixes = {
+        ".agents/plugins/marketplace.json",
+        ".antigravity-plugin/marketplace.json",
+        ".claude-plugin/marketplace.json",
+        ".gemini-plugin/marketplace.json",
+        "plugins/dev-workflows/skills/report-result/SKILL.md",
+    }
+    assert all(
+        any(member.endswith(suffix) for member in sdist_members)
+        for suffix in required_suffixes
+    )
+
+    with zipfile.ZipFile(wheel) as archive:
+        wheel_members = set(archive.namelist())
+    assert "agent_workflows_harness/cli.py" in wheel_members
+    assert "agent_workflows_harness/selector.py" in wheel_members
+    assert any(name.endswith(".dist-info/entry_points.txt") for name in wheel_members)
+    assert not any(name.startswith("plugins/") for name in wheel_members)

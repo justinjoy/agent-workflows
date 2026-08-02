@@ -21,6 +21,7 @@ SUPPORTED_PROPERTIES = frozenset(
 _NON_TRIVIAL_PROPERTIES = frozenset(
     {"external_service", "multi_file", "non_trivial", "touches_shared_behavior"}
 )
+_DOCS_ONLY_CONFLICTS = frozenset({"external_service", "touches_shared_behavior"})
 _REQUEST_ID_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9_.:-]{0,127}\Z")
 
 
@@ -64,9 +65,17 @@ class RequestFacts:
             values = ", ".join(repr(prop) for prop in sorted(unknown))
             raise ValueError(f"unsupported request properties: {values}")
 
+        docs_conflicts = properties & _DOCS_ONLY_CONFLICTS
+        if "docs_only" in properties and docs_conflicts:
+            values = ", ".join(sorted(docs_conflicts))
+            raise ValueError(f"docs_only conflicts with code-impact properties: {values}")
+
         # Concrete risk evidence wins over a caller's optimistic `trivial` hint.
-        if "trivial" in properties and properties & _NON_TRIVIAL_PROPERTIES:
-            properties = properties - {"trivial"}
+        if properties & _NON_TRIVIAL_PROPERTIES:
+            properties = (properties - {"trivial"}) | {"non_trivial"}
+        elif "trivial" not in properties and "docs_only" not in properties:
+            # Missing risk evidence fails closed instead of selecting the small plan.
+            properties = properties | {"non_trivial"}
         object.__setattr__(self, "properties", properties)
 
     @classmethod
