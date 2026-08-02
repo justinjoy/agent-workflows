@@ -25,6 +25,12 @@ def classify_request(text: str) -> RequestFacts:
         if any(_contains_phrase(normalized, keyword) for keyword in keywords):
             properties.add(prop)
 
+    # In docs-only text, names such as "GitHub", "API", or "auth workflow"
+    # describe documentation subjects rather than evidence of runtime impact.
+    # Explicit properties remain strict and are validated by RequestFacts.
+    if "docs_only" in properties:
+        properties.difference_update({"external_service", "touches_shared_behavior"})
+
     if any(
         _contains_phrase(normalized, keyword)
         for keyword in ("small", "trivial", "typo", "one-line")

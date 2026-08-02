@@ -126,6 +126,21 @@ def test_docs_only_policy_handles_risk_and_rejects_code_impact():
             raise AssertionError(f"expected docs_only + {conflicting} to fail")
 
 
+def test_docs_only_text_does_not_infer_code_impact_from_documented_subjects():
+    requests = (
+        "docs only: update GitHub installation instructions",
+        "README only: document the public API",
+        "documentation only: explain the auth workflow",
+    )
+
+    for request in requests:
+        facts = classify_request(request)
+        assert "docs_only" in facts.properties
+        assert "external_service" not in facts.properties
+        assert "touches_shared_behavior" not in facts.properties
+        assert "implement-atomic-change" in _ids(facts)
+
+
 def test_empty_facts_fail_closed_to_non_trivial_plan():
     facts = RequestFacts()
 
@@ -243,3 +258,26 @@ def test_cli_rejects_unknown_property_without_running_wirelog():
     assert proc.returncode == 2
     assert "unsupported request properties" in proc.stderr
     assert "Traceback" not in proc.stderr
+
+
+def test_cli_accepts_docs_only_text_about_external_subjects():
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "agent_workflows_harness.cli",
+            "docs only: update GitHub installation instructions",
+        ],
+        check=True,
+        env=_subprocess_env(),
+        text=True,
+        capture_output=True,
+    )
+
+    payload = json.loads(proc.stdout)
+
+    assert payload["request"]["properties"] == ["docs_only"]
+    assert any(
+        skill["reason"] == "documentation_change_requires_focused_validation"
+        for skill in payload["selected"]
+    )
