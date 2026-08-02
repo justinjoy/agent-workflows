@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import re
 import subprocess
 import sys
 import tarfile
@@ -94,10 +93,11 @@ def test_implementation_skill_requires_review_consensus_before_commit():
 def test_provider_versions_follow_release_policy():
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     expected_version = project["project"]["version"]
+    assert expected_version == "2.0.0"
 
-    coupled_plugin_manifests = [
+    provider_plugin_manifests = [
         ROOT / "plugins" / "dev-workflows" / f".{host}-plugin" / "plugin.json"
-        for host in ("antigravity", "gemini")
+        for host in ("antigravity", "claude", "codex", "gemini")
     ]
     coupled_marketplace_manifests = [
         ROOT / f".{host}-plugin" / "marketplace.json"
@@ -106,27 +106,15 @@ def test_provider_versions_follow_release_policy():
 
     assert all(
         _json(path)["version"] == expected_version
-        for path in coupled_plugin_manifests
+        for path in provider_plugin_manifests
     )
     assert all(
         _json(path)["plugins"][0]["version"] == expected_version
         for path in coupled_marketplace_manifests
     )
 
-    claude_manifest = _json(
-        ROOT / "plugins" / "dev-workflows" / ".claude-plugin" / "plugin.json"
-    )
     claude_entry = _json(ROOT / ".claude-plugin" / "marketplace.json")["plugins"][0]
-    assert claude_manifest["version"] == "1.1.1"
     assert "version" not in claude_entry
-
-    codex_version = _json(
-        ROOT / "plugins" / "dev-workflows" / ".codex-plugin" / "plugin.json"
-    )["version"]
-    cachebuster = re.fullmatch(
-        rf"{re.escape(expected_version)}\+codex\.[A-Za-z0-9.-]+", codex_version
-    )
-    assert codex_version == expected_version or cachebuster is not None
 
 
 def test_claude_marketplace_points_to_shared_lifecycle_skill_layout():
@@ -145,7 +133,6 @@ def test_claude_marketplace_points_to_shared_lifecycle_skill_layout():
     commit_path = plugin_root / "skills" / "commit-atomic-change" / "SKILL.md"
 
     assert manifest["name"] == entry["name"] == "dev-workflows"
-    assert manifest["version"] == "1.1.1"
     for description in (manifest["description"], entry["description"]):
         assert "mandatory review" in description
         assert "Architect/Critic approval" in description
