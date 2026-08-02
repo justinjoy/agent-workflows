@@ -2,15 +2,92 @@
 
 ## Implementation Skill
 
-`implementation-skill` is a structured workflow for non-trivial code changes. It turns one implementation request into a sequence of independent checks so design, critique, code changes, review, and final validation do not collapse into one unexamined pass.
+`implementation-skill` is a Datalog-selected harness for code changes. It turns
+one implementation request into request facts, evaluates those facts with
+PyreWire/Wirelog rules, and returns a machine-readable plan of atomic skills to
+run.
 
-Use it when a change is large enough that mistakes could come from weak planning, hidden coupling, missing tests, or a reviewer simply confirming the implementer's assumptions.
+Use it when the agent should not freely choose its own workflow. The harness
+makes the selection explicit: trivial changes skip planning and review gates,
+while non-trivial, cross-module, shared-behavior, or external-service changes
+select planning, critique, review, broad validation, and final risk checks.
+
+## Datalog Harness
+
+The runtime package exposes:
+
+```bash
+agent-workflows-harness "refactor auth workflow and add tests"
+```
+
+The command emits JSON:
+
+```json
+{
+  "request": {
+    "request_id": "req",
+    "request_type": "code_change",
+    "properties": ["needs_tests", "non_trivial", "touches_shared_behavior"]
+  },
+  "selected": [
+    {
+      "order": 10,
+      "skill_id": "inspect-repository",
+      "reason": "code_change_requires_repository_context"
+    }
+  ],
+  "blocked": []
+}
+```
+
+Selection is computed by Wirelog rules through PyreWire, not by natural-language
+skill descriptions.
+
+The harness accepts only its documented request properties and the
+`code_change` request type before generating Wirelog source. Unknown or malformed
+facts fail with an input error. If a request contains both `trivial` and concrete
+risk evidence such as `non_trivial`, shared behavior, external services, or
+multi-file scope, the risk evidence wins and the trivial hint is removed.
+
+Documentation-only requests still select `implement-atomic-change` and focused
+validation; they skip planning and review only when no separate risk fact
+requires those gates.
+
+Use `--decision-log path/to/decisions.jsonl` to append the request facts,
+selected skills, blocked skills, and rule reasons as durable JSON Lines records.
+
+The compatibility `implementation-skill` entrypoint remains stable for plugin
+hosts. When the runtime command is unavailable, the skill fails closed by using
+the non-trivial plan manually and reporting that the runtime selector could not
+execute.
+
+The Python runtime depends on `pyrewire>=1.0.4,<2.0`. Runtime-backed tests are
+required and fail when PyreWire or its native Wirelog library cannot load; a
+load failure is not treated as a skipped optional integration.
+
+## Atomic Skills
+
+The implementation harness can select these smaller skills:
+
+- `inspect-repository`
+- `classify-change-risk`
+- `create-implementation-plan`
+- `critique-plan`
+- `implement-atomic-change`
+- `run-focused-tests`
+- `run-broad-tests`
+- `review-diff`
+- `validate-final-design`
+- `validate-final-risks`
+- `report-result`
 
 ## Persona Communication
 
 ![Implementation Skill persona communication diagram](assets/implementation-skill-communication.svg)
 
-The Coordinator is the communication hub. It gathers repository context, sends each persona only the artifact needed for that role, resolves disagreements, and keeps unrelated work out of scope.
+The Coordinator is the communication hub. It gathers repository context, runs
+the selected atomic skills, sends each persona only the artifact needed for that
+role, resolves disagreements, and keeps unrelated work out of scope.
 
 The personas communicate through raw artifacts rather than shared assumptions:
 
@@ -55,7 +132,9 @@ Use `implementation-skill` for:
 - changes that need explicit test strategy
 - PR feedback that requires implementation and review
 
-For small edits, direct implementation is usually enough.
+For small edits, the Datalog selector should produce the small plan:
+inspection, risk classification, atomic implementation, focused tests, and
+reporting.
 
 ## Close Open Issues Goal
 

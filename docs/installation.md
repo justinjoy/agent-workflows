@@ -2,6 +2,19 @@
 
 Install the `dev-workflows` plugin from this repository for Codex, Claude Code, or Antigravity.
 
+The plugin skills can be installed without the Python harness, but the
+Datalog-based selector command requires the Python package. Installing the
+project also installs `pyrewire>=1.0.4,<2.0`:
+
+```bash
+python3 -m pip install -e ".[dev]"
+agent-workflows-harness --property trivial
+```
+
+Supported PyreWire wheels include the Wirelog runtime. For a custom or
+source-built PyreWire installation, set `WIRELOG_LIB` to the absolute path of a
+compatible `libwirelog` only when overriding library discovery is necessary.
+
 ## Codex
 
 Add this repository as a Codex plugin marketplace from GitHub:
