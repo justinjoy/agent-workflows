@@ -45,6 +45,32 @@ Run `/reload-plugins` or start a new Claude Code session, then invoke:
 /dev-workflows:implementation-skill
 ```
 
+Claude Code discovers the shared skills directly from the plugin root
+`skills/` directory, including `implementation-skill` and
+`commit-atomic-change`. No Claude-specific copy of those skills is required.
+
+The Claude plugin manifest version is `1.1.1`; the marketplace intentionally
+omits a duplicate version so the manifest remains the single version source.
+Existing installations can fetch and activate this lifecycle update with:
+
+```text
+/plugin marketplace update agent-workflows
+/plugin update dev-workflows@agent-workflows
+/reload-plugins
+```
+
+Restart Claude Code instead of `/reload-plugins` when preferred. To validate a
+local checkout before marketplace installation, run from the repository root:
+
+```bash
+claude plugin validate ./plugins/dev-workflows --strict
+claude --plugin-dir ./plugins/dev-workflows
+```
+
+The second command starts an interactive session using the local plugin. Invoke
+`/dev-workflows:implementation-skill` there to exercise the shared lifecycle;
+this local check does not verify marketplace update propagation.
+
 ### Antigravity
 
 Add the marketplace with the CLI:

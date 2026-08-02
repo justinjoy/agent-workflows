@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 import tarfile
@@ -90,24 +91,74 @@ def test_implementation_skill_requires_review_consensus_before_commit():
     assert "content digest reviewed" in review
 
 
-def test_plugin_and_marketplace_versions_match_python_package():
+def test_provider_versions_follow_release_policy():
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     expected_version = project["project"]["version"]
 
-    plugin_manifests = [
+    coupled_plugin_manifests = [
         ROOT / "plugins" / "dev-workflows" / f".{host}-plugin" / "plugin.json"
-        for host in ("antigravity", "claude", "codex", "gemini")
+        for host in ("antigravity", "gemini")
     ]
-    marketplace_manifests = [
+    coupled_marketplace_manifests = [
         ROOT / f".{host}-plugin" / "marketplace.json"
-        for host in ("antigravity", "claude", "gemini")
+        for host in ("antigravity", "gemini")
     ]
 
-    assert all(_json(path)["version"] == expected_version for path in plugin_manifests)
+    assert all(
+        _json(path)["version"] == expected_version
+        for path in coupled_plugin_manifests
+    )
     assert all(
         _json(path)["plugins"][0]["version"] == expected_version
-        for path in marketplace_manifests
+        for path in coupled_marketplace_manifests
     )
+
+    claude_manifest = _json(
+        ROOT / "plugins" / "dev-workflows" / ".claude-plugin" / "plugin.json"
+    )
+    claude_entry = _json(ROOT / ".claude-plugin" / "marketplace.json")["plugins"][0]
+    assert claude_manifest["version"] == "1.1.1"
+    assert "version" not in claude_entry
+
+    codex_version = _json(
+        ROOT / "plugins" / "dev-workflows" / ".codex-plugin" / "plugin.json"
+    )["version"]
+    cachebuster = re.fullmatch(
+        rf"{re.escape(expected_version)}\+codex\.[A-Za-z0-9.-]+", codex_version
+    )
+    assert codex_version == expected_version or cachebuster is not None
+
+
+def test_claude_marketplace_points_to_shared_lifecycle_skill_layout():
+    marketplace = _json(ROOT / ".claude-plugin" / "marketplace.json")
+    entry = marketplace["plugins"][0]
+    plugin_root = (ROOT / entry["source"]).resolve()
+
+    assert entry["source"] == "./plugins/dev-workflows"
+    assert plugin_root.is_relative_to(ROOT.resolve())
+    assert "strict" not in entry
+    assert "version" not in entry
+    assert {"review", "wirelog", "atomic-commit"} <= set(entry["tags"])
+
+    manifest = _json(plugin_root / ".claude-plugin" / "plugin.json")
+    implementation_path = plugin_root / "skills" / "implementation-skill" / "SKILL.md"
+    commit_path = plugin_root / "skills" / "commit-atomic-change" / "SKILL.md"
+
+    assert manifest["name"] == entry["name"] == "dev-workflows"
+    assert manifest["version"] == "1.1.1"
+    for description in (manifest["description"], entry["description"]):
+        assert "mandatory review" in description
+        assert "Architect/Critic approval" in description
+        assert "verified atomic commits" in description
+    assert implementation_path.is_file()
+    assert commit_path.is_file()
+
+    implementation = implementation_path.read_text(encoding="utf-8")
+    commit = commit_path.read_text(encoding="utf-8")
+    assert "including documentation-only and trivial changes" in implementation
+    assert "commit-atomic-change" in implementation
+    assert "Reviewer, Architect, and Critic approve" in implementation
+    assert "approved_candidate_tree" in commit
 
 
 def test_package_metadata_uses_wirelog_terminology():

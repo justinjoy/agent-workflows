@@ -8,14 +8,13 @@
     {
       "name": "dev-workflows",
       "source": "./plugins/dev-workflows",
-      "description": "Reusable implementation and review workflow skills.",
-      "version": "1.1.0",
+      "description": "Wirelog workflows with mandatory review, Architect/Critic approval, and verified atomic commits.",
       "license": "APACHE-2.0",
       "author": {
         "name": "joykim"
       },
       "category": "Productivity",
-      "tags": ["development", "implementation", "review"]
+      "tags": ["development", "implementation", "review", "wirelog", "atomic-commit"]
     }
   ]
 }
