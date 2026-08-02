@@ -1,4 +1,4 @@
 interface:
   display_name: "Implementation Skill"
-  short_description: "Role-gated implementation workflow"
-  default_prompt: "Use /dev-workflows:implementation-skill (or implementation-skill) to plan, implement, review, and validate this change with architect, critic, implementer, and reviewer roles."
+  short_description: "Wirelog-selected implementation workflow"
+  default_prompt: "Use /dev-workflows:implementation-skill (or implementation-skill) to select an atomic workflow with Wirelog, then implement and validate this change."

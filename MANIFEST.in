@@ -1,0 +1,7 @@
+include README.md LICENSE
+include .agents/plugins/marketplace.json
+include .antigravity-plugin/marketplace.json
+include .claude-plugin/marketplace.json
+include .gemini-plugin/marketplace.json
+recursive-include docs *.md *.svg
+recursive-include plugins *.md *.json *.yaml

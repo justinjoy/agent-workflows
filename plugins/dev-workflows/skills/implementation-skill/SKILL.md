@@ -1,28 +1,82 @@
 ---
 name: implementation-skill
-description: Host-neutral workflow for non-trivial changes requiring independent architecture, critique, implementation, review, atomic commits, and consensus. Invoke as $dev-workflows:implementation-skill in Codex, /dev-workflows:implementation-skill in Claude Code, or /dev-workflows:implementation-skill (or implementation-skill) in Antigravity.
+description: Datalog/PyreWire-selected implementation harness for code changes. Invoke as $dev-workflows:implementation-skill in Codex, /dev-workflows:implementation-skill in Claude Code, or /dev-workflows:implementation-skill (or implementation-skill) in Antigravity.
 ---
 
 # Implementation Skill
 
 ## Overview
 
-Use this skill for substantial code changes where correctness depends on explicit design analysis, critique, incremental implementation, and review consensus. The workflow uses four roles:
+Use this compatibility entrypoint for code changes that should be handled by
+the Datalog-based agent workflow harness. The harness converts the request into
+facts, evaluates the PyreWire/Wirelog selector, and emits the atomic skills that
+the coordinator is allowed to run for the current request.
+
+The old monolithic procedure is now split into smaller skills:
+
+- `inspect-repository`
+- `classify-change-risk`
+- `create-implementation-plan`
+- `critique-plan`
+- `implement-atomic-change`
+- `run-focused-tests`
+- `run-broad-tests`
+- `review-diff`
+- `validate-final-design`
+- `validate-final-risks`
+- `report-result`
+
+The workflow still uses four roles when the selected plan requires them:
 
 - **Architect**: define the intended design, scope, constraints, interfaces, and sequencing.
 - **Critic**: challenge assumptions, find failure modes, and tighten the plan before implementation.
 - **Implementer**: make changes in atomic commit-sized units with focused validation.
 - **Reviewer**: review the Implementer's changes for bugs, regressions, missing tests, and scope creep.
 
-In Codex, invoke this skill as `$dev-workflows:implementation-skill`; in Claude Code or Antigravity, invoke it as `/dev-workflows:implementation-skill` (or `implementation-skill`).
+## Datalog Harness
 
-Use the host's native independent agents for every role pass when they are available. The coordinating agent sequences the passes and integrates their raw artifacts; it does not substitute its own role pass. Architect and Critic must be independent of one another, and a Reviewer must not be the agent that wrote the code. See [Agent Use and Degraded Mode](#agent-use-and-degraded-mode) for the required fallback.
+Before editing, select the atomic skill plan with the runtime harness:
+
+```bash
+agent-workflows-harness "refactor auth workflow and add tests"
+```
+
+or pass explicit facts:
+
+```bash
+agent-workflows-harness --property non_trivial --property touches_shared_behavior --property needs_tests
+```
+
+The command emits a machine-readable JSON plan containing request facts,
+selected skills, blocked skills, and rule reasons. Add
+`--decision-log path/to/decisions.jsonl` to append a durable selection record.
+Skill choice is therefore made by explicit facts and Wirelog rules instead of by
+free-form LLM tool selection.
+
+If the harness runtime is unavailable in the host, fail closed: apply the
+non-trivial plan manually, report that the runtime selector could not execute,
+and do not skip planning, critique, review, or final validation gates.
 
 ## Workflow
 
-### 1. Intake
+### 1. Harness Selection
 
-Clarify the concrete target only when it is genuinely ambiguous. Otherwise infer the smallest useful scope from the request and repository context.
+Determine request facts and run the Datalog selector. Record the selected
+skills and their rule reasons in the final response.
+
+Minimum facts include:
+
+- request type
+- trivial or non-trivial risk
+- single-file or multi-file scope
+- test need
+- review need
+- shared behavior, public API, persistence, network, or workflow impact
+
+### 2. Intake
+
+Clarify the concrete target only when it is genuinely ambiguous. Otherwise
+infer the smallest useful scope from the request and repository context.
 
 Inspect the codebase before proposing implementation details:
 
@@ -33,109 +87,81 @@ Inspect the codebase before proposing implementation details:
 
 Protect unrelated work. Do not stage, revert, or modify unrelated files.
 
-### 2. Architect Pass
+### 3. Architect Pass
 
-Ask an independent Architect agent to produce a short implementation plan before any editing. Give it the intake findings and the objective; do not give it a plan to confirm. The Architect should identify:
+Run this pass only when the selected skill plan includes
+`create-implementation-plan`. Ask an independent Architect agent to produce a
+short implementation plan before editing. Give it the intake findings and the
+objective; do not give it a plan to confirm.
 
-- the user-visible behavior to change
-- affected modules and ownership boundaries
-- data model or API contract changes
-- migration/backward compatibility concerns
-- test strategy and likely edge cases
-- an atomic commit breakdown
+### 4. Critic Pass
 
-Prefer the repository's existing patterns. Avoid broad refactors unless required for the requested behavior.
+Run this pass only when the selected skill plan includes `critique-plan`.
+Before implementation, have the Critic challenge the Architect plan. Resolve
+Critic objections before implementation.
 
-### 3. Critic Pass
+### 5. Implementer Pass
 
-Ask an independent Critic agent to attack the Architect plan before implementation. Pass it the plan and the repository context, not the Architect's justification for the plan. The Critic must be distinct from the Architect. It should look for:
-
-- hidden coupling between modules
-- unsafe assumptions about state, concurrency, persistence, or external services
-- missing failure handling
-- tests that would pass without proving the behavior
-- over-broad scope or non-atomic change boundaries
-
-Resolve Critic objections before implementation. If Architect and Critic disagree, state the tradeoff and choose the smaller safer path unless the user requested a broader design.
-
-### 4. Implementer Pass
-
-Ask an independent Implementer agent per atomic unit, giving it the agreed plan and that unit's boundary. Run implementation sequentially when units touch shared files; use concurrent agents only when their file sets are confirmed disjoint. An atomic unit should:
+Run `implement-atomic-change` in atomic units. Each unit should:
 
 - have one behavioral purpose
 - be reviewable independently
 - include tests or validation appropriate to risk
 - leave the repo in a passing state when committed
 
-For each atomic unit:
+Do not batch unrelated fixes into the same unit.
 
-1. Edit only the files needed for that unit.
-2. Run focused tests first.
-3. Run broader tests when shared behavior or public workflows changed.
-4. Commit with a terse message after validation.
+### 6. Validation
 
-Do not batch unrelated fixes into the same commit. If a necessary prerequisite appears, make it a separate atomic unit or explain why it is inseparable.
+Run `run-focused-tests` when selected. Run `run-broad-tests` when the plan
+selects it because shared behavior, public workflows, persistence, network, or
+cross-module code changed.
 
-### 5. Reviewer Pass
+### 7. Reviewer Pass
 
-Ask an independent Reviewer agent to review the Implementer's diff before declaring work complete. The Reviewer must not have written the code under review. Give it the raw diff and the objective, not the Implementer's account of what it did. The Reviewer should use a code-review stance:
+Run this pass only when the selected skill plan includes `review-diff`. The
+Reviewer must not have written the code under review. Give it the raw diff and
+the objective, not the Implementer's account.
 
-- findings first, ordered by severity
-- cite concrete files/lines where possible
-- focus on bugs, regressions, missing tests, and maintainability risks
-- avoid praise and summary-only review
+### 8. Architect and Critic Validation
 
-If issues are found, send the work back to Implementer for another atomic fix and repeat validation.
-
-### 6. Architect and Critic Validation
-
-After Reviewer approval, ask independent Architect and Critic agents to validate the final diff against the original goal. Prefer the original Architect and Critic agents so each can compare the final result with its own raw artifact; if unavailable, use fresh independent agents with the original plan and recorded objections.
-
-The Architect confirms:
-
-- the implemented design matches the intended behavior
-- the commit boundaries are coherent
-- public contracts and docs are consistent
-
-The Critic confirms:
-
-- prior objections were addressed
-- known failure modes are tested or deliberately accepted
-- no unrelated work was included
-
-The task is complete only when Reviewer, Architect, and Critic agree there are no blocking issues.
+Run these passes only when the selected skill plan includes
+`validate-final-design` and `validate-final-risks`. The task is complete only
+when Reviewer, Architect, and Critic agree there are no blocking issues, or
+degraded mode and accepted risks are explicitly reported.
 
 ## Agent Use and Degraded Mode
 
-Independent role passes are the normal workflow. A role that inherits another role's reasoning can merely confirm it, which defeats the critique and review gates.
+Independent role passes are the normal workflow. A role that inherits another
+role's reasoning can merely confirm it, which defeats the critique and review
+gates.
 
-Normal-mode rules:
+If independent agents are unavailable in the current host, or dispatch fails for
+any selected role, immediately switch the remaining workflow to degraded
+sequential mode. Preserve and use every successfully returned raw artifact.
 
-- Use one host-native independent agent per role pass. Do not combine Architect and Critic, and do not let an Implementer review its own diff.
-- Keep prompts scoped. Provide raw artifacts (objective, intake, plan, objections, diff, and test output) and let the receiving agent reach its own conclusion. Never state the expected answer or another role's rationale.
-- Require each agent to return an actionable raw artifact: plan, objection list, implementation diff and validation results, or findings ordered by severity.
-- Coordinate mutation of shared files sequentially. Concurrent work is allowed only after confirming each agent's file set is disjoint.
-- The coordinating agent sequences passes, resolves disagreements, and reports to the user. It does not delegate reading this skill's instructions.
-
-If independent agents are unavailable in the current host, or dispatch fails for any role, immediately switch the remaining workflow to **degraded sequential mode**. Preserve and use every successfully returned raw artifact. Complete each remaining pass sequentially in the coordinating context, with clearly labeled `Architect (degraded)`, `Critic (degraded)`, `Implementer (degraded)`, or `Reviewer (degraded)` outputs. Do not retry a failed dispatch in a way that abandons the evidence already collected.
-
-Degraded mode weakens independence guarantees: Architect and Critic may share a context, and the Reviewer may be unable to be independent of the Implementer. The final handoff must explicitly name which role separations were weakened and why. Keep all other gates — raw-artifact review, tests, atomic commits, scope checks, and final Architect/Critic validation — in force.
+Degraded mode weakens independence guarantees. The final handoff must
+explicitly name which role separations were weakened and why.
 
 ## Completion Checklist
 
 Before final response, verify:
 
-- Independent Architect and Critic passes ran, or degraded sequential mode and its cause were declared.
-- Architect plan was considered.
+- The Datalog selector ran and emitted a plan, or runtime unavailability was
+  declared with the fail-closed plan.
+- The final response reports selected atomic skills and rule reasons.
+- Independent Architect and Critic passes ran when selected, or degraded mode
+  and its cause were declared.
 - Critic risks were addressed or explicitly accepted.
 - Implementation was divided into atomic commit-sized changes.
 - Tests or validation were run and reported.
-- Reviewer checked the raw final diff and did not write the code under review, or the weakened separation was declared in degraded mode.
-- Architect and Critic agreed the result satisfies the goal.
+- Reviewer checked the raw final diff when selected.
+- Architect and Critic agreed the result satisfies the goal when selected.
 - Unrelated untracked or modified files were not included.
 
 In the final response, report:
 
+- selected skill plan
 - commit hashes if commits were made
 - PR URL if opened
 - validation commands and results
