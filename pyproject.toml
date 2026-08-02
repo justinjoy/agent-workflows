@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "agent-workflows"
 version = "1.1.0"
-description = "Datalog-selected agent workflow skills backed by PyreWire."
+description = "Wirelog-based agent workflow skills evaluated through PyreWire."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"

@@ -11,6 +11,8 @@ Report:
 
 - selected skill plan
 - validation commands and results
-- commit hashes or pull request URL when applicable
+- every atomic commit hash, subject, committed path set, and approved tree or
+  diff digest
+- pull request URL when applicable
 - residual risks or unavailable validation
 - unrelated untracked or modified files

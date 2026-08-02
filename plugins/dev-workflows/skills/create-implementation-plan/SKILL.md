@@ -1,6 +1,6 @@
 ---
 name: create-implementation-plan
-description: Atomic implementation skill that creates a plan for non-trivial changes selected by the Datalog harness.
+description: Atomic implementation skill that creates a plan for non-trivial changes selected by the Wirelog harness.
 ---
 
 # Create Implementation Plan

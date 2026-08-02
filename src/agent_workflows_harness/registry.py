@@ -20,6 +20,8 @@ SKILLS: tuple[SkillDefinition, ...] = (
     SkillDefinition("validate-final-design", 90, "Validate final design", "architect_validation"),
     SkillDefinition("validate-final-risks", 100, "Validate final risks", "critic_validation"),
     SkillDefinition("report-result", 110, "Report result", "final_report"),
+    # Append new definitions so the positional Wirelog codes above remain stable.
+    SkillDefinition("commit-atomic-change", 105, "Commit atomic change", "atomic_commit"),
 )
 
 SKILL_BY_ID = {skill.skill_id: skill for skill in SKILLS}
@@ -34,11 +36,12 @@ REASON_BY_CODE = {
     5: "code_change_requires_atomic_implementation",
     6: "code_change_requires_focused_validation",
     7: "shared_or_cross_module_behavior_changed",
-    8: "review_gate_required",
-    9: "planned_change_requires_architect_validation",
-    10: "planned_change_requires_critic_validation",
+    8: "every_code_change_requires_review",
+    9: "every_code_change_requires_architect_validation",
+    10: "every_code_change_requires_critic_validation",
     11: "every_harness_run_reports_outcome",
     12: "documentation_change_requires_focused_validation",
+    13: "every_code_change_requires_atomic_commit",
     101: "risk_facts_do_not_require_explicit_plan",
     102: "no_plan_selected",
     103: "no_shared_or_cross_module_behavior_fact",

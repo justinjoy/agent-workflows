@@ -2,13 +2,18 @@
 
 Shared agent skills for Codex, Claude Code, and Antigravity.
 
-`implementation-skill` is now a Datalog-selected harness. It keeps the stable
-host entrypoint, but splits implementation work into smaller atomic skills and
-uses PyreWire/Wirelog rules to select the skill plan for each request.
+`implementation-skill` is now a Wirelog-based harness evaluated through
+PyreWire. It keeps the stable host entrypoint, but splits implementation work
+into smaller atomic skills and uses explicit rules to select the skill plan for
+each request.
+
+Every change, including documentation, is validated, independently reviewed,
+approved by Architect and Critic, and committed as an atomic unit before the
+result is reported.
 
 ## Included Skills
 
-- `implementation-skill`: Datalog/PyreWire harness entrypoint that selects atomic implementation skills with explicit rules.
+- `implementation-skill`: Wirelog-based harness entrypoint that selects atomic implementation skills through PyreWire.
 - `close-open-issues-goal`: persistent workflow for reducing open repository issues to zero.
 
 ## Harness CLI
@@ -29,6 +34,13 @@ agent-workflows-harness "refactor auth workflow and add tests"
 The command emits JSON with request facts, selected skills, blocked skills, and
 rule reasons. Add `--decision-log path/to/decisions.jsonl` to append a durable
 selection record for the run.
+
+Plugin hosts resolve the harness from `PATH`, the current workspace's `.venv`,
+or an importable active Python environment, in that order. They try every
+available form before treating the runtime as unavailable and do not install
+dependencies or rewrite the host environment automatically. See
+[Installation](docs/installation.md#harness-command-resolution) for the exact
+commands.
 
 Supported PyreWire wheels include the Wirelog runtime. `WIRELOG_LIB` is only
 needed to override the bundled library or when using a custom/source-built

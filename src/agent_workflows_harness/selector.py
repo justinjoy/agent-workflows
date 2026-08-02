@@ -11,7 +11,6 @@ RULES = """
 .decl property(req: symbol, prop: symbol)
 .decl needs_plan(req: symbol)
 .decl needs_broad_tests(req: symbol)
-.decl needs_review_gate(req: symbol)
 .decl selected_skill(order: int32, skill: int32, reason: int32)
 .decl blocked_skill(skill: int32, reason: int32)
 
@@ -23,9 +22,6 @@ needs_plan(Req) :- property(Req, "touches_shared_behavior").
 needs_broad_tests(Req) :- property(Req, "touches_shared_behavior").
 needs_broad_tests(Req) :- property(Req, "multi_file").
 needs_broad_tests(Req) :- property(Req, "external_service").
-
-needs_review_gate(Req) :- needs_plan(Req).
-needs_review_gate(Req) :- property(Req, "needs_review").
 
 selected_skill(10, 1, 1) :-
     request_type(Req, "code_change").
@@ -57,16 +53,16 @@ selected_skill(70, 7, 7) :-
     needs_broad_tests(Req).
 
 selected_skill(80, 8, 8) :-
-    request_type(Req, "code_change"),
-    needs_review_gate(Req).
+    request_type(Req, "code_change").
 
 selected_skill(90, 9, 9) :-
-    request_type(Req, "code_change"),
-    needs_plan(Req).
+    request_type(Req, "code_change").
 
 selected_skill(100, 10, 10) :-
-    request_type(Req, "code_change"),
-    needs_plan(Req).
+    request_type(Req, "code_change").
+
+selected_skill(105, 12, 13) :-
+    request_type(Req, "code_change").
 
 selected_skill(110, 11, 11) :-
     request(Req).
@@ -83,17 +79,6 @@ blocked_skill(7, 103) :-
     request_type(Req, "code_change"),
     !needs_broad_tests(Req).
 
-blocked_skill(8, 104) :-
-    request_type(Req, "code_change"),
-    !needs_review_gate(Req).
-
-blocked_skill(9, 105) :-
-    request_type(Req, "code_change"),
-    !needs_plan(Req).
-
-blocked_skill(10, 105) :-
-    request_type(Req, "code_change"),
-    !needs_plan(Req).
 """
 
 

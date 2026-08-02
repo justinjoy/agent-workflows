@@ -5,8 +5,15 @@ description: Atomic implementation skill that reviews the raw diff for bugs, reg
 
 # Review Diff
 
-Review the raw `code_diff` artifact.
+Independently review the raw, uncommitted `code_diff` artifact, including its
+untracked and binary files. Review the exact candidate content identified by
+its base tree, path set, digest, and `approved_candidate_tree` ID.
 
 Output `review_findings` ordered by severity. Findings should cite concrete
 files and lines when possible and focus on bugs, regressions, missing tests,
-and maintainability risks.
+and maintainability risks. The output must echo the `approved_candidate_tree`
+ID, approved candidate path set, and content digest reviewed.
+
+For documentation, also verify technical accuracy, commands, internal links,
+and consistency with the actual selector output. Any candidate change
+invalidates the review and requires a new independent review.

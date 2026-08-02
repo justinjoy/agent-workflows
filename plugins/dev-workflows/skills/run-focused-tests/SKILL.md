@@ -12,3 +12,4 @@ Output `focused_test_result` with:
 - command or validation performed
 - pass/fail status
 - failure details when relevant
+- the `approved_candidate_tree` ID validated by this result

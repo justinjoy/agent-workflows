@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="980" viewBox="0 0 1200 980" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1080" viewBox="0 0 1200 1080" role="img" aria-labelledby="title desc">
   <title id="title">Implementation Skill persona communication map</title>
-  <desc id="desc">A radial communication diagram with the Coordinator at the center, User at the top, and Architect, Critic, Implementer, and Reviewer arranged around it. Curved lines show prompts sent by the Coordinator and artifacts returned by each persona.</desc>
+  <desc id="desc">A radial communication diagram with the Coordinator at the center, User at the top, and Architect, Critic, Implementer, and Reviewer arranged around it. Curved lines show prompts and artifacts, with an approved candidate committed only after the final gate.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
@@ -32,7 +32,7 @@
     </style>
   </defs>
 
-  <rect class="bg" width="1200" height="980"/>
+  <rect class="bg" width="1200" height="1080"/>
 
   <text class="title" x="48" y="58">Implementation Skill: persona communication</text>
   <text class="subtitle" x="48" y="84">The Coordinator sits at the center; independent personas exchange scoped prompts and raw artifacts around it.</text>
@@ -61,7 +61,7 @@
   <rect class="role" x="90" y="590" width="240" height="100"/>
   <text class="label" x="210" y="629" text-anchor="middle">Implementer</text>
   <text class="body" x="210" y="656" text-anchor="middle">diffs, validation,</text>
-  <text class="body" x="210" y="676" text-anchor="middle">atomic commits</text>
+  <text class="body" x="210" y="676" text-anchor="middle">commit candidate</text>
 
   <rect class="role" x="870" y="590" width="240" height="100"/>
   <text class="label" x="990" y="629" text-anchor="middle">Reviewer</text>
@@ -70,7 +70,11 @@
 
   <rect class="gate" x="475" y="760" width="250" height="76"/>
   <text class="label" x="600" y="790" text-anchor="middle">Final Gate</text>
-  <text class="body" x="600" y="814" text-anchor="middle">Architect + Critic validate</text>
+  <text class="body" x="600" y="814" text-anchor="middle">Architect + Critic approve</text>
+
+  <rect class="gate" x="475" y="870" width="250" height="76"/>
+  <text class="label" x="600" y="900" text-anchor="middle">Atomic Commit</text>
+  <text class="body" x="600" y="924" text-anchor="middle">approved tree only</text>
 
   <path class="send" d="M585 208 C560 276 560 332 580 378"/>
   <path class="return" d="M623 388 C655 326 650 272 616 208"/>
@@ -104,6 +108,7 @@
 
   <path class="send" d="M585 516 C565 590 570 696 590 750"/>
   <path class="return" d="M620 516 C646 590 644 696 614 750"/>
+  <path class="send" d="M600 836 L600 860"/>
   <rect class="card" x="360" y="626" width="150" height="58"/>
   <text class="small" x="435" y="650" text-anchor="middle">Final check</text>
   <text class="muted" x="435" y="670" text-anchor="middle">final diff</text>
@@ -111,7 +116,7 @@
   <text class="small" x="765" y="650" text-anchor="middle">Validation</text>
   <text class="muted" x="765" y="670" text-anchor="middle">design + risk</text>
 
-  <path class="feedback" d="M930 700 C855 970 345 970 270 700"/>
-  <rect class="feedbackCard" x="430" y="900" width="340" height="40"/>
-  <text class="small" x="600" y="925" text-anchor="middle">blocking findings loop back to implementation</text>
+  <path class="feedback" d="M930 700 C855 1040 345 1040 270 700"/>
+  <rect class="feedbackCard" x="430" y="1000" width="340" height="40"/>
+  <text class="small" x="600" y="1025" text-anchor="middle">blocking findings loop back to implementation</text>
 </svg>

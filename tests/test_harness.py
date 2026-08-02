@@ -9,6 +9,7 @@ from pathlib import Path
 
 from agent_workflows_harness.facts import classify_request
 from agent_workflows_harness.models import RequestFacts
+from agent_workflows_harness.registry import SKILL_BY_ID, SKILL_CODE_BY_ID
 from agent_workflows_harness.selector import build_program, select_plan, select_skills
 
 
@@ -17,6 +18,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def _ids(facts: RequestFacts) -> list[str]:
     return [skill.skill_id for skill in select_skills(facts)]
+
+
+def _steps(facts: RequestFacts) -> list[tuple[int, str, str]]:
+    return [
+        (skill.order, skill.skill_id, skill.reason)
+        for skill in select_skills(facts)
+    ]
 
 
 def _subprocess_env() -> dict[str, str]:
@@ -61,7 +69,7 @@ def test_required_pyrewire_version_is_installed():
     assert installed >= (1, 0, 4)
 
 
-def test_trivial_code_change_gets_small_plan_and_blocks_gates():
+def test_trivial_code_change_gets_review_consensus_and_commit_gates():
     plan = select_plan(RequestFacts.from_properties({"trivial"}))
 
     assert [skill.skill_id for skill in plan.selected] == [
@@ -69,10 +77,14 @@ def test_trivial_code_change_gets_small_plan_and_blocks_gates():
         "classify-change-risk",
         "implement-atomic-change",
         "run-focused-tests",
+        "review-diff",
+        "validate-final-design",
+        "validate-final-risks",
+        "commit-atomic-change",
         "report-result",
     ]
     assert "create-implementation-plan" in {skill.skill_id for skill in plan.blocked}
-    assert "review-diff" in {skill.skill_id for skill in plan.blocked}
+    assert "review-diff" not in {skill.skill_id for skill in plan.blocked}
 
 
 def test_non_trivial_shared_change_gets_review_and_broad_tests():
@@ -93,6 +105,7 @@ def test_non_trivial_shared_change_gets_review_and_broad_tests():
         "review-diff",
         "validate-final-design",
         "validate-final-risks",
+        "commit-atomic-change",
         "report-result",
     ]
 
@@ -105,10 +118,20 @@ def test_docs_only_change_still_selects_implementation():
         "classify-change-risk",
         "implement-atomic-change",
         "run-focused-tests",
+        "review-diff",
+        "validate-final-design",
+        "validate-final-risks",
+        "commit-atomic-change",
         "report-result",
     ]
     focused = next(skill for skill in plan.selected if skill.skill_id == "run-focused-tests")
     assert focused.reason == "documentation_change_requires_focused_validation"
+    assert next(skill for skill in plan.selected if skill.skill_id == "review-diff").reason == (
+        "every_code_change_requires_review"
+    )
+    assert next(
+        skill for skill in plan.selected if skill.skill_id == "commit-atomic-change"
+    ).reason == "every_code_change_requires_atomic_commit"
 
 
 def test_docs_only_policy_handles_risk_and_rejects_code_impact():
@@ -155,6 +178,74 @@ def test_risk_facts_override_trivial_hint():
     assert "create-implementation-plan" in _ids(facts)
 
 
+def test_commit_hint_is_compatible_but_commit_is_always_selected():
+    without_hint = _ids(RequestFacts.from_properties({"docs_only"}))
+    with_hint = _ids(RequestFacts.from_properties({"docs_only", "needs_commit"}))
+
+    assert with_hint == without_hint
+    assert "commit-atomic-change" in without_hint
+
+
+def test_new_skill_keeps_existing_wirelog_codes_stable():
+    assert SKILL_CODE_BY_ID["report-result"] == 11
+    assert SKILL_CODE_BY_ID["commit-atomic-change"] == 12
+    assert SKILL_BY_ID["commit-atomic-change"].order == 105
+    assert SKILL_BY_ID["report-result"].order == 110
+
+
+def test_every_change_uses_exact_review_consensus_commit_tail():
+    common_tail = [
+        (80, "review-diff", "every_code_change_requires_review"),
+        (
+            90,
+            "validate-final-design",
+            "every_code_change_requires_architect_validation",
+        ),
+        (
+            100,
+            "validate-final-risks",
+            "every_code_change_requires_critic_validation",
+        ),
+        (105, "commit-atomic-change", "every_code_change_requires_atomic_commit"),
+        (110, "report-result", "every_harness_run_reports_outcome"),
+    ]
+    cases = (
+        (
+            {"docs_only"},
+            [
+                (10, "inspect-repository", "code_change_requires_repository_context"),
+                (20, "classify-change-risk", "code_change_requires_risk_classification"),
+                (50, "implement-atomic-change", "code_change_requires_atomic_implementation"),
+                (60, "run-focused-tests", "documentation_change_requires_focused_validation"),
+            ],
+        ),
+        (
+            {"trivial"},
+            [
+                (10, "inspect-repository", "code_change_requires_repository_context"),
+                (20, "classify-change-risk", "code_change_requires_risk_classification"),
+                (50, "implement-atomic-change", "code_change_requires_atomic_implementation"),
+                (60, "run-focused-tests", "code_change_requires_focused_validation"),
+            ],
+        ),
+        (
+            {"non_trivial", "touches_shared_behavior", "needs_tests"},
+            [
+                (10, "inspect-repository", "code_change_requires_repository_context"),
+                (20, "classify-change-risk", "code_change_requires_risk_classification"),
+                (30, "create-implementation-plan", "risk_or_scope_requires_explicit_plan"),
+                (40, "critique-plan", "planned_change_requires_plan_critique"),
+                (50, "implement-atomic-change", "code_change_requires_atomic_implementation"),
+                (60, "run-focused-tests", "code_change_requires_focused_validation"),
+                (70, "run-broad-tests", "shared_or_cross_module_behavior_changed"),
+            ],
+        ),
+    )
+
+    for properties, prefix in cases:
+        assert _steps(RequestFacts.from_properties(properties)) == prefix + common_tail
+
+
 def test_request_facts_reject_source_breaking_or_unknown_values():
     for properties in ({'bad"fact'}, {"unknown"}, {"line\nbreak"}):
         try:
@@ -189,6 +280,7 @@ def test_selected_and_blocked_skills_are_disjoint_and_complete():
         "review-diff",
         "validate-final-design",
         "validate-final-risks",
+        "commit-atomic-change",
         "report-result",
     }
 
@@ -212,7 +304,10 @@ def test_cli_emits_machine_readable_json():
 
     assert payload["request"]["properties"] == ["trivial"]
     assert payload["selected"][0]["skill_id"] == "inspect-repository"
-    assert any(skill["skill_id"] == "review-diff" for skill in payload["blocked"])
+    assert any(skill["skill_id"] == "review-diff" for skill in payload["selected"])
+    assert any(
+        skill["skill_id"] == "commit-atomic-change" for skill in payload["selected"]
+    )
 
 
 def test_cli_appends_decision_record(tmp_path):

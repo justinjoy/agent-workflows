@@ -2,17 +2,19 @@
 
 ## Implementation Skill
 
-`implementation-skill` is a Datalog-selected harness for code changes. It turns
-one implementation request into request facts, evaluates those facts with
-PyreWire/Wirelog rules, and returns a machine-readable plan of atomic skills to
-run.
+`implementation-skill` is a Wirelog-based harness for code changes, evaluated
+through PyreWire. It turns one implementation request into request facts,
+evaluates those facts with explicit Wirelog rules, and returns a
+machine-readable plan of atomic skills to run.
 
 Use it when the agent should not freely choose its own workflow. The harness
-makes the selection explicit: trivial changes skip planning and review gates,
-while non-trivial, cross-module, shared-behavior, or external-service changes
-select planning, critique, review, broad validation, and final risk checks.
+makes the selection explicit: trivial and documentation-only changes can skip
+planning and broad tests, but every change still selects independent review,
+final Architect and Critic validation, and an atomic commit. Non-trivial,
+cross-module, shared-behavior, or external-service changes also select planning,
+critique, and broad validation.
 
-## Datalog Harness
+## Wirelog Harness
 
 The runtime package exposes:
 
@@ -49,10 +51,11 @@ facts fail with an input error. If a request contains both `trivial` and concret
 risk evidence such as `non_trivial`, shared behavior, external services, or
 multi-file scope, the risk evidence wins and the trivial hint is removed.
 
-Documentation-only requests still select `implement-atomic-change` and a
-documentation-specific focused-validation reason. They skip planning and review
-only when no separate risk fact requires those gates. Multi-file or explicitly
-non-trivial documentation may still select the larger workflow, while
+Documentation-only requests select `implement-atomic-change`, a
+documentation-specific focused-validation reason, independent review, final
+Architect and Critic validation, and `commit-atomic-change`. They skip planning
+and broad tests only when no separate risk fact requires those gates. Multi-file
+or explicitly non-trivial documentation may still select the larger workflow, while
 `docs_only` combined with external-service or shared-behavior impact is rejected
 as contradictory input. Requests with no risk or documentation facts fail
 closed to `non_trivial`.
@@ -61,9 +64,13 @@ Use `--decision-log path/to/decisions.jsonl` to append the request facts,
 selected skills, blocked skills, and rule reasons as durable JSON Lines records.
 
 The compatibility `implementation-skill` entrypoint remains stable for plugin
-hosts. When the runtime command is unavailable, the skill fails closed by using
-the non-trivial plan manually and reporting that the runtime selector could not
-execute.
+hosts. A host first checks `PATH`, then an executable harness in the current
+workspace's `.venv`, then an active Python environment that can import the
+harness module. It tries each available form without installing dependencies or
+rewriting the host environment. Only when none can run does the skill fail
+closed by using the non-trivial plan manually and reporting that the runtime
+selector could not execute. See [Harness command resolution](installation.md#harness-command-resolution)
+for the exact platform-specific commands.
 
 The Python runtime depends on `pyrewire>=1.0.4,<2.0`. Runtime-backed tests are
 required and fail when PyreWire or its native Wirelog library cannot load; a
@@ -83,6 +90,7 @@ The implementation harness can select these smaller skills:
 - `review-diff`
 - `validate-final-design`
 - `validate-final-risks`
+- `commit-atomic-change`
 - `report-result`
 
 ## Persona Communication
@@ -97,15 +105,16 @@ The personas communicate through raw artifacts rather than shared assumptions:
 
 - Architect returns a plan.
 - Critic returns objections.
-- Implementer returns a diff and validation output.
+- Implementer returns an uncommitted atomic candidate and validation output.
 - Reviewer returns findings against the raw diff.
-- Architect and Critic return final validation against the original goal.
+- Architect and Critic approve the same immutable candidate against the goal.
+- Committer verifies and commits only the approved tree.
 
 ## Roles
 
 - **Architect** defines the intended behavior, affected files, interfaces, risks, tests, and atomic commit breakdown.
 - **Critic** challenges the plan before code changes begin. It looks for hidden coupling, weak assumptions, over-broad scope, and tests that would not prove the behavior.
-- **Implementer** changes the code in reviewable units and validates each unit before it is committed.
+- **Implementer** produces an uncommitted candidate in reviewable units and validates each unit.
 - **Reviewer** reviews the raw diff for bugs, regressions, missing tests, and scope creep.
 
 The coordinating agent sequences those passes, resolves disagreements, and reports the result. It should not replace the role passes with its own unchecked judgment.
@@ -120,9 +129,19 @@ The workflow depends on separation between roles:
 
 When host-native independent agents are unavailable, the skill switches to degraded sequential mode. The workflow still runs the same gates, but the final report must say which independence guarantees were weakened.
 
-## Atomic Changes
+## Atomic Changes and Commits
 
-Implementation is split into commit-sized units. Each unit should have one behavioral purpose, touch only the files needed for that purpose, and leave the repository in a passing state after validation.
+Implementation is split into commit-sized candidates. Each candidate has one
+behavioral purpose, touches only the files needed for that purpose, and remains
+uncommitted while tests, independent review, and final Architect and Critic
+validation run. Blocking findings loop back through implementation, testing,
+and review.
+
+After all three roles approve the same candidate digest, the commit skill stages
+only its approved paths and hunks, verifies the staged tree, creates a new commit
+without bypassing hooks or amending history, and verifies the commit tree still
+matches the approved tree. Multiple candidates repeat this lifecycle and produce
+one commit each.
 
 This keeps review focused and makes it easier to identify where a regression entered.
 
@@ -136,9 +155,9 @@ Use `implementation-skill` for:
 - changes that need explicit test strategy
 - PR feedback that requires implementation and review
 
-For small edits, the Datalog selector should produce the small plan:
-inspection, risk classification, atomic implementation, focused tests, and
-reporting.
+For small edits, the Wirelog selector produces the small plan: inspection, risk
+classification, atomic candidate implementation, focused tests, independent
+review, final Architect and Critic validation, atomic commit, and reporting.
 
 ## Close Open Issues Goal
 
