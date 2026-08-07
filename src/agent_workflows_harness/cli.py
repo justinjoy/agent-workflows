@@ -7,6 +7,7 @@ import sys
 from .facts import classify_request
 from .models import RequestFacts
 from .decision_log import append_decision_record
+from .ontology import derive, load_ontology
 from .serialization import plan_to_dict
 from .selector import select_plan
 
@@ -19,6 +20,29 @@ def _parser() -> argparse.ArgumentParser:
         action="append",
         default=[],
         help="Explicit request fact property. Can be supplied multiple times.",
+    )
+    parser.add_argument(
+        "--touches",
+        action="append",
+        default=[],
+        metavar="SURFACE",
+        help=(
+            "ABox triple: a declared ontology surface this request touches. "
+            "Request properties are inferred from the surface class hierarchy. "
+            "Can be supplied multiple times."
+        ),
+    )
+    parser.add_argument(
+        "--scope",
+        action="append",
+        default=[],
+        metavar="SCOPE",
+        help="ABox triple: a declared ontology scope for this request.",
+    )
+    parser.add_argument(
+        "--ontology",
+        metavar="PATH",
+        help="JSON TBox document replacing the bundled default ontology.",
     )
     parser.add_argument(
         "--text",
@@ -37,14 +61,20 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     request_text = " ".join(args.request)
     try:
-        if request_text or args.property:
+        ontology = load_ontology(args.ontology) if args.ontology else None
+        derivations = derive(args.touches, args.scope, ontology)
+        inferred = {item.request_property for item in derivations}
+
+        if request_text or args.property or inferred:
             properties = (
                 set(classify_request(request_text).properties) if request_text else set()
             )
-            facts = RequestFacts.from_properties(properties.union(args.property))
+            facts = RequestFacts.from_properties(
+                properties.union(args.property).union(inferred)
+            )
         else:
             facts = RequestFacts()
-    except ValueError as exc:
+    except (OSError, ValueError) as exc:
         parser.error(str(exc))
 
     try:
@@ -59,14 +89,16 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     if args.decision_log:
-        append_decision_record(args.decision_log, plan)
+        append_decision_record(args.decision_log, plan, derivations)
 
     if args.text:
+        for item in derivations:
+            print(f"    {item.request_property} <= {item.source} # {' -> '.join(item.path)}")
         for skill in plan.selected:
             print(f"{skill.order:03d} {skill.skill_id} # {skill.reason}")
         return 0
 
-    print(json.dumps(plan_to_dict(plan), indent=2, sort_keys=True))
+    print(json.dumps(plan_to_dict(plan, derivations), indent=2, sort_keys=True))
     return 0
 
 
