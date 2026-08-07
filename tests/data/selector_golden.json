@@ -1,0 +1,1672 @@
+{
+ "cases": {
+  "": [
+   0,
+   "non_trivial"
+  ],
+  "docs_only": [
+   1,
+   "docs_only"
+  ],
+  "docs_only|multi_file": [
+   2,
+   "docs_only|multi_file|non_trivial"
+  ],
+  "docs_only|multi_file|needs_commit": [
+   2,
+   "docs_only|multi_file|needs_commit|non_trivial"
+  ],
+  "docs_only|multi_file|needs_commit|needs_review": [
+   2,
+   "docs_only|multi_file|needs_commit|needs_review|non_trivial"
+  ],
+  "docs_only|multi_file|needs_commit|needs_review|needs_tests": [
+   2,
+   "docs_only|multi_file|needs_commit|needs_review|needs_tests|non_trivial"
+  ],
+  "docs_only|multi_file|needs_commit|needs_review|needs_tests|non_trivial": [
+   2,
+   "docs_only|multi_file|needs_commit|needs_review|needs_tests|non_trivial"
+  ],
+  "docs_only|multi_file|needs_commit|needs_review|needs_tests|non_trivial|trivial": [
+   2,
+   "docs_only|multi_file|needs_commit|needs_review|needs_tests|non_trivial"
+  ],
+  "docs_only|multi_file|needs_commit|needs_review|needs_tests|trivial": [
+   2,
+   "docs_only|multi_file|needs_commit|needs_review|needs_tests|non_trivial"
+  ],
+  "docs_only|multi_file|needs_commit|needs_review|non_trivial": [
+   2,
+   "docs_only|multi_file|needs_commit|needs_review|non_trivial"
+  ],
+  "docs_only|multi_file|needs_commit|needs_review|non_trivial|trivial": [
+   2,
+   "docs_only|multi_file|needs_commit|needs_review|non_trivial"
+  ],
+  "docs_only|multi_file|needs_commit|needs_review|trivial": [
+   2,
+   "docs_only|multi_file|needs_commit|needs_review|non_trivial"
+  ],
+  "docs_only|multi_file|needs_commit|needs_tests": [
+   2,
+   "docs_only|multi_file|needs_commit|needs_tests|non_trivial"
+  ],
+  "docs_only|multi_file|needs_commit|needs_tests|non_trivial": [
+   2,
+   "docs_only|multi_file|needs_commit|needs_tests|non_trivial"
+  ],
+  "docs_only|multi_file|needs_commit|needs_tests|non_trivial|trivial": [
+   2,
+   "docs_only|multi_file|needs_commit|needs_tests|non_trivial"
+  ],
+  "docs_only|multi_file|needs_commit|needs_tests|trivial": [
+   2,
+   "docs_only|multi_file|needs_commit|needs_tests|non_trivial"
+  ],
+  "docs_only|multi_file|needs_commit|non_trivial": [
+   2,
+   "docs_only|multi_file|needs_commit|non_trivial"
+  ],
+  "docs_only|multi_file|needs_commit|non_trivial|trivial": [
+   2,
+   "docs_only|multi_file|needs_commit|non_trivial"
+  ],
+  "docs_only|multi_file|needs_commit|trivial": [
+   2,
+   "docs_only|multi_file|needs_commit|non_trivial"
+  ],
+  "docs_only|multi_file|needs_review": [
+   2,
+   "docs_only|multi_file|needs_review|non_trivial"
+  ],
+  "docs_only|multi_file|needs_review|needs_tests": [
+   2,
+   "docs_only|multi_file|needs_review|needs_tests|non_trivial"
+  ],
+  "docs_only|multi_file|needs_review|needs_tests|non_trivial": [
+   2,
+   "docs_only|multi_file|needs_review|needs_tests|non_trivial"
+  ],
+  "docs_only|multi_file|needs_review|needs_tests|non_trivial|trivial": [
+   2,
+   "docs_only|multi_file|needs_review|needs_tests|non_trivial"
+  ],
+  "docs_only|multi_file|needs_review|needs_tests|trivial": [
+   2,
+   "docs_only|multi_file|needs_review|needs_tests|non_trivial"
+  ],
+  "docs_only|multi_file|needs_review|non_trivial": [
+   2,
+   "docs_only|multi_file|needs_review|non_trivial"
+  ],
+  "docs_only|multi_file|needs_review|non_trivial|trivial": [
+   2,
+   "docs_only|multi_file|needs_review|non_trivial"
+  ],
+  "docs_only|multi_file|needs_review|trivial": [
+   2,
+   "docs_only|multi_file|needs_review|non_trivial"
+  ],
+  "docs_only|multi_file|needs_tests": [
+   2,
+   "docs_only|multi_file|needs_tests|non_trivial"
+  ],
+  "docs_only|multi_file|needs_tests|non_trivial": [
+   2,
+   "docs_only|multi_file|needs_tests|non_trivial"
+  ],
+  "docs_only|multi_file|needs_tests|non_trivial|trivial": [
+   2,
+   "docs_only|multi_file|needs_tests|non_trivial"
+  ],
+  "docs_only|multi_file|needs_tests|trivial": [
+   2,
+   "docs_only|multi_file|needs_tests|non_trivial"
+  ],
+  "docs_only|multi_file|non_trivial": [
+   2,
+   "docs_only|multi_file|non_trivial"
+  ],
+  "docs_only|multi_file|non_trivial|trivial": [
+   2,
+   "docs_only|multi_file|non_trivial"
+  ],
+  "docs_only|multi_file|trivial": [
+   2,
+   "docs_only|multi_file|non_trivial"
+  ],
+  "docs_only|needs_commit": [
+   1,
+   "docs_only|needs_commit"
+  ],
+  "docs_only|needs_commit|needs_review": [
+   1,
+   "docs_only|needs_commit|needs_review"
+  ],
+  "docs_only|needs_commit|needs_review|needs_tests": [
+   1,
+   "docs_only|needs_commit|needs_review|needs_tests"
+  ],
+  "docs_only|needs_commit|needs_review|needs_tests|non_trivial": [
+   3,
+   "docs_only|needs_commit|needs_review|needs_tests|non_trivial"
+  ],
+  "docs_only|needs_commit|needs_review|needs_tests|non_trivial|trivial": [
+   3,
+   "docs_only|needs_commit|needs_review|needs_tests|non_trivial"
+  ],
+  "docs_only|needs_commit|needs_review|needs_tests|trivial": [
+   1,
+   "docs_only|needs_commit|needs_review|needs_tests|trivial"
+  ],
+  "docs_only|needs_commit|needs_review|non_trivial": [
+   3,
+   "docs_only|needs_commit|needs_review|non_trivial"
+  ],
+  "docs_only|needs_commit|needs_review|non_trivial|trivial": [
+   3,
+   "docs_only|needs_commit|needs_review|non_trivial"
+  ],
+  "docs_only|needs_commit|needs_review|trivial": [
+   1,
+   "docs_only|needs_commit|needs_review|trivial"
+  ],
+  "docs_only|needs_commit|needs_tests": [
+   1,
+   "docs_only|needs_commit|needs_tests"
+  ],
+  "docs_only|needs_commit|needs_tests|non_trivial": [
+   3,
+   "docs_only|needs_commit|needs_tests|non_trivial"
+  ],
+  "docs_only|needs_commit|needs_tests|non_trivial|trivial": [
+   3,
+   "docs_only|needs_commit|needs_tests|non_trivial"
+  ],
+  "docs_only|needs_commit|needs_tests|trivial": [
+   1,
+   "docs_only|needs_commit|needs_tests|trivial"
+  ],
+  "docs_only|needs_commit|non_trivial": [
+   3,
+   "docs_only|needs_commit|non_trivial"
+  ],
+  "docs_only|needs_commit|non_trivial|trivial": [
+   3,
+   "docs_only|needs_commit|non_trivial"
+  ],
+  "docs_only|needs_commit|trivial": [
+   1,
+   "docs_only|needs_commit|trivial"
+  ],
+  "docs_only|needs_review": [
+   1,
+   "docs_only|needs_review"
+  ],
+  "docs_only|needs_review|needs_tests": [
+   1,
+   "docs_only|needs_review|needs_tests"
+  ],
+  "docs_only|needs_review|needs_tests|non_trivial": [
+   3,
+   "docs_only|needs_review|needs_tests|non_trivial"
+  ],
+  "docs_only|needs_review|needs_tests|non_trivial|trivial": [
+   3,
+   "docs_only|needs_review|needs_tests|non_trivial"
+  ],
+  "docs_only|needs_review|needs_tests|trivial": [
+   1,
+   "docs_only|needs_review|needs_tests|trivial"
+  ],
+  "docs_only|needs_review|non_trivial": [
+   3,
+   "docs_only|needs_review|non_trivial"
+  ],
+  "docs_only|needs_review|non_trivial|trivial": [
+   3,
+   "docs_only|needs_review|non_trivial"
+  ],
+  "docs_only|needs_review|trivial": [
+   1,
+   "docs_only|needs_review|trivial"
+  ],
+  "docs_only|needs_tests": [
+   1,
+   "docs_only|needs_tests"
+  ],
+  "docs_only|needs_tests|non_trivial": [
+   3,
+   "docs_only|needs_tests|non_trivial"
+  ],
+  "docs_only|needs_tests|non_trivial|trivial": [
+   3,
+   "docs_only|needs_tests|non_trivial"
+  ],
+  "docs_only|needs_tests|trivial": [
+   1,
+   "docs_only|needs_tests|trivial"
+  ],
+  "docs_only|non_trivial": [
+   3,
+   "docs_only|non_trivial"
+  ],
+  "docs_only|non_trivial|trivial": [
+   3,
+   "docs_only|non_trivial"
+  ],
+  "docs_only|trivial": [
+   1,
+   "docs_only|trivial"
+  ],
+  "external_service": [
+   4,
+   "external_service|non_trivial"
+  ],
+  "external_service|multi_file": [
+   4,
+   "external_service|multi_file|non_trivial"
+  ],
+  "external_service|multi_file|needs_commit": [
+   4,
+   "external_service|multi_file|needs_commit|non_trivial"
+  ],
+  "external_service|multi_file|needs_commit|needs_review": [
+   4,
+   "external_service|multi_file|needs_commit|needs_review|non_trivial"
+  ],
+  "external_service|multi_file|needs_commit|needs_review|needs_tests": [
+   4,
+   "external_service|multi_file|needs_commit|needs_review|needs_tests|non_trivial"
+  ],
+  "external_service|multi_file|needs_commit|needs_review|needs_tests|non_trivial": [
+   4,
+   "external_service|multi_file|needs_commit|needs_review|needs_tests|non_trivial"
+  ],
+  "external_service|multi_file|needs_commit|needs_review|needs_tests|non_trivial|touches_shared_behavior": [
+   4,
+   "external_service|multi_file|needs_commit|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_commit|needs_review|needs_tests|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "external_service|multi_file|needs_commit|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_commit|needs_review|needs_tests|non_trivial|trivial": [
+   4,
+   "external_service|multi_file|needs_commit|needs_review|needs_tests|non_trivial"
+  ],
+  "external_service|multi_file|needs_commit|needs_review|needs_tests|touches_shared_behavior": [
+   4,
+   "external_service|multi_file|needs_commit|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_commit|needs_review|needs_tests|touches_shared_behavior|trivial": [
+   4,
+   "external_service|multi_file|needs_commit|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_commit|needs_review|needs_tests|trivial": [
+   4,
+   "external_service|multi_file|needs_commit|needs_review|needs_tests|non_trivial"
+  ],
+  "external_service|multi_file|needs_commit|needs_review|non_trivial": [
+   4,
+   "external_service|multi_file|needs_commit|needs_review|non_trivial"
+  ],
+  "external_service|multi_file|needs_commit|needs_review|non_trivial|touches_shared_behavior": [
+   4,
+   "external_service|multi_file|needs_commit|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_commit|needs_review|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "external_service|multi_file|needs_commit|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_commit|needs_review|non_trivial|trivial": [
+   4,
+   "external_service|multi_file|needs_commit|needs_review|non_trivial"
+  ],
+  "external_service|multi_file|needs_commit|needs_review|touches_shared_behavior": [
+   4,
+   "external_service|multi_file|needs_commit|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_commit|needs_review|touches_shared_behavior|trivial": [
+   4,
+   "external_service|multi_file|needs_commit|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_commit|needs_review|trivial": [
+   4,
+   "external_service|multi_file|needs_commit|needs_review|non_trivial"
+  ],
+  "external_service|multi_file|needs_commit|needs_tests": [
+   4,
+   "external_service|multi_file|needs_commit|needs_tests|non_trivial"
+  ],
+  "external_service|multi_file|needs_commit|needs_tests|non_trivial": [
+   4,
+   "external_service|multi_file|needs_commit|needs_tests|non_trivial"
+  ],
+  "external_service|multi_file|needs_commit|needs_tests|non_trivial|touches_shared_behavior": [
+   4,
+   "external_service|multi_file|needs_commit|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_commit|needs_tests|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "external_service|multi_file|needs_commit|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_commit|needs_tests|non_trivial|trivial": [
+   4,
+   "external_service|multi_file|needs_commit|needs_tests|non_trivial"
+  ],
+  "external_service|multi_file|needs_commit|needs_tests|touches_shared_behavior": [
+   4,
+   "external_service|multi_file|needs_commit|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_commit|needs_tests|touches_shared_behavior|trivial": [
+   4,
+   "external_service|multi_file|needs_commit|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_commit|needs_tests|trivial": [
+   4,
+   "external_service|multi_file|needs_commit|needs_tests|non_trivial"
+  ],
+  "external_service|multi_file|needs_commit|non_trivial": [
+   4,
+   "external_service|multi_file|needs_commit|non_trivial"
+  ],
+  "external_service|multi_file|needs_commit|non_trivial|touches_shared_behavior": [
+   4,
+   "external_service|multi_file|needs_commit|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_commit|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "external_service|multi_file|needs_commit|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_commit|non_trivial|trivial": [
+   4,
+   "external_service|multi_file|needs_commit|non_trivial"
+  ],
+  "external_service|multi_file|needs_commit|touches_shared_behavior": [
+   4,
+   "external_service|multi_file|needs_commit|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_commit|touches_shared_behavior|trivial": [
+   4,
+   "external_service|multi_file|needs_commit|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_commit|trivial": [
+   4,
+   "external_service|multi_file|needs_commit|non_trivial"
+  ],
+  "external_service|multi_file|needs_review": [
+   4,
+   "external_service|multi_file|needs_review|non_trivial"
+  ],
+  "external_service|multi_file|needs_review|needs_tests": [
+   4,
+   "external_service|multi_file|needs_review|needs_tests|non_trivial"
+  ],
+  "external_service|multi_file|needs_review|needs_tests|non_trivial": [
+   4,
+   "external_service|multi_file|needs_review|needs_tests|non_trivial"
+  ],
+  "external_service|multi_file|needs_review|needs_tests|non_trivial|touches_shared_behavior": [
+   4,
+   "external_service|multi_file|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_review|needs_tests|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "external_service|multi_file|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_review|needs_tests|non_trivial|trivial": [
+   4,
+   "external_service|multi_file|needs_review|needs_tests|non_trivial"
+  ],
+  "external_service|multi_file|needs_review|needs_tests|touches_shared_behavior": [
+   4,
+   "external_service|multi_file|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_review|needs_tests|touches_shared_behavior|trivial": [
+   4,
+   "external_service|multi_file|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_review|needs_tests|trivial": [
+   4,
+   "external_service|multi_file|needs_review|needs_tests|non_trivial"
+  ],
+  "external_service|multi_file|needs_review|non_trivial": [
+   4,
+   "external_service|multi_file|needs_review|non_trivial"
+  ],
+  "external_service|multi_file|needs_review|non_trivial|touches_shared_behavior": [
+   4,
+   "external_service|multi_file|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_review|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "external_service|multi_file|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_review|non_trivial|trivial": [
+   4,
+   "external_service|multi_file|needs_review|non_trivial"
+  ],
+  "external_service|multi_file|needs_review|touches_shared_behavior": [
+   4,
+   "external_service|multi_file|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_review|touches_shared_behavior|trivial": [
+   4,
+   "external_service|multi_file|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_review|trivial": [
+   4,
+   "external_service|multi_file|needs_review|non_trivial"
+  ],
+  "external_service|multi_file|needs_tests": [
+   4,
+   "external_service|multi_file|needs_tests|non_trivial"
+  ],
+  "external_service|multi_file|needs_tests|non_trivial": [
+   4,
+   "external_service|multi_file|needs_tests|non_trivial"
+  ],
+  "external_service|multi_file|needs_tests|non_trivial|touches_shared_behavior": [
+   4,
+   "external_service|multi_file|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_tests|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "external_service|multi_file|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_tests|non_trivial|trivial": [
+   4,
+   "external_service|multi_file|needs_tests|non_trivial"
+  ],
+  "external_service|multi_file|needs_tests|touches_shared_behavior": [
+   4,
+   "external_service|multi_file|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_tests|touches_shared_behavior|trivial": [
+   4,
+   "external_service|multi_file|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|needs_tests|trivial": [
+   4,
+   "external_service|multi_file|needs_tests|non_trivial"
+  ],
+  "external_service|multi_file|non_trivial": [
+   4,
+   "external_service|multi_file|non_trivial"
+  ],
+  "external_service|multi_file|non_trivial|touches_shared_behavior": [
+   4,
+   "external_service|multi_file|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "external_service|multi_file|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|non_trivial|trivial": [
+   4,
+   "external_service|multi_file|non_trivial"
+  ],
+  "external_service|multi_file|touches_shared_behavior": [
+   4,
+   "external_service|multi_file|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|touches_shared_behavior|trivial": [
+   4,
+   "external_service|multi_file|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|multi_file|trivial": [
+   4,
+   "external_service|multi_file|non_trivial"
+  ],
+  "external_service|needs_commit": [
+   4,
+   "external_service|needs_commit|non_trivial"
+  ],
+  "external_service|needs_commit|needs_review": [
+   4,
+   "external_service|needs_commit|needs_review|non_trivial"
+  ],
+  "external_service|needs_commit|needs_review|needs_tests": [
+   4,
+   "external_service|needs_commit|needs_review|needs_tests|non_trivial"
+  ],
+  "external_service|needs_commit|needs_review|needs_tests|non_trivial": [
+   4,
+   "external_service|needs_commit|needs_review|needs_tests|non_trivial"
+  ],
+  "external_service|needs_commit|needs_review|needs_tests|non_trivial|touches_shared_behavior": [
+   4,
+   "external_service|needs_commit|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_commit|needs_review|needs_tests|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "external_service|needs_commit|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_commit|needs_review|needs_tests|non_trivial|trivial": [
+   4,
+   "external_service|needs_commit|needs_review|needs_tests|non_trivial"
+  ],
+  "external_service|needs_commit|needs_review|needs_tests|touches_shared_behavior": [
+   4,
+   "external_service|needs_commit|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_commit|needs_review|needs_tests|touches_shared_behavior|trivial": [
+   4,
+   "external_service|needs_commit|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_commit|needs_review|needs_tests|trivial": [
+   4,
+   "external_service|needs_commit|needs_review|needs_tests|non_trivial"
+  ],
+  "external_service|needs_commit|needs_review|non_trivial": [
+   4,
+   "external_service|needs_commit|needs_review|non_trivial"
+  ],
+  "external_service|needs_commit|needs_review|non_trivial|touches_shared_behavior": [
+   4,
+   "external_service|needs_commit|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_commit|needs_review|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "external_service|needs_commit|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_commit|needs_review|non_trivial|trivial": [
+   4,
+   "external_service|needs_commit|needs_review|non_trivial"
+  ],
+  "external_service|needs_commit|needs_review|touches_shared_behavior": [
+   4,
+   "external_service|needs_commit|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_commit|needs_review|touches_shared_behavior|trivial": [
+   4,
+   "external_service|needs_commit|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_commit|needs_review|trivial": [
+   4,
+   "external_service|needs_commit|needs_review|non_trivial"
+  ],
+  "external_service|needs_commit|needs_tests": [
+   4,
+   "external_service|needs_commit|needs_tests|non_trivial"
+  ],
+  "external_service|needs_commit|needs_tests|non_trivial": [
+   4,
+   "external_service|needs_commit|needs_tests|non_trivial"
+  ],
+  "external_service|needs_commit|needs_tests|non_trivial|touches_shared_behavior": [
+   4,
+   "external_service|needs_commit|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_commit|needs_tests|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "external_service|needs_commit|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_commit|needs_tests|non_trivial|trivial": [
+   4,
+   "external_service|needs_commit|needs_tests|non_trivial"
+  ],
+  "external_service|needs_commit|needs_tests|touches_shared_behavior": [
+   4,
+   "external_service|needs_commit|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_commit|needs_tests|touches_shared_behavior|trivial": [
+   4,
+   "external_service|needs_commit|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_commit|needs_tests|trivial": [
+   4,
+   "external_service|needs_commit|needs_tests|non_trivial"
+  ],
+  "external_service|needs_commit|non_trivial": [
+   4,
+   "external_service|needs_commit|non_trivial"
+  ],
+  "external_service|needs_commit|non_trivial|touches_shared_behavior": [
+   4,
+   "external_service|needs_commit|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_commit|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "external_service|needs_commit|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_commit|non_trivial|trivial": [
+   4,
+   "external_service|needs_commit|non_trivial"
+  ],
+  "external_service|needs_commit|touches_shared_behavior": [
+   4,
+   "external_service|needs_commit|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_commit|touches_shared_behavior|trivial": [
+   4,
+   "external_service|needs_commit|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_commit|trivial": [
+   4,
+   "external_service|needs_commit|non_trivial"
+  ],
+  "external_service|needs_review": [
+   4,
+   "external_service|needs_review|non_trivial"
+  ],
+  "external_service|needs_review|needs_tests": [
+   4,
+   "external_service|needs_review|needs_tests|non_trivial"
+  ],
+  "external_service|needs_review|needs_tests|non_trivial": [
+   4,
+   "external_service|needs_review|needs_tests|non_trivial"
+  ],
+  "external_service|needs_review|needs_tests|non_trivial|touches_shared_behavior": [
+   4,
+   "external_service|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_review|needs_tests|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "external_service|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_review|needs_tests|non_trivial|trivial": [
+   4,
+   "external_service|needs_review|needs_tests|non_trivial"
+  ],
+  "external_service|needs_review|needs_tests|touches_shared_behavior": [
+   4,
+   "external_service|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_review|needs_tests|touches_shared_behavior|trivial": [
+   4,
+   "external_service|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_review|needs_tests|trivial": [
+   4,
+   "external_service|needs_review|needs_tests|non_trivial"
+  ],
+  "external_service|needs_review|non_trivial": [
+   4,
+   "external_service|needs_review|non_trivial"
+  ],
+  "external_service|needs_review|non_trivial|touches_shared_behavior": [
+   4,
+   "external_service|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_review|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "external_service|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_review|non_trivial|trivial": [
+   4,
+   "external_service|needs_review|non_trivial"
+  ],
+  "external_service|needs_review|touches_shared_behavior": [
+   4,
+   "external_service|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_review|touches_shared_behavior|trivial": [
+   4,
+   "external_service|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_review|trivial": [
+   4,
+   "external_service|needs_review|non_trivial"
+  ],
+  "external_service|needs_tests": [
+   4,
+   "external_service|needs_tests|non_trivial"
+  ],
+  "external_service|needs_tests|non_trivial": [
+   4,
+   "external_service|needs_tests|non_trivial"
+  ],
+  "external_service|needs_tests|non_trivial|touches_shared_behavior": [
+   4,
+   "external_service|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_tests|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "external_service|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_tests|non_trivial|trivial": [
+   4,
+   "external_service|needs_tests|non_trivial"
+  ],
+  "external_service|needs_tests|touches_shared_behavior": [
+   4,
+   "external_service|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_tests|touches_shared_behavior|trivial": [
+   4,
+   "external_service|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|needs_tests|trivial": [
+   4,
+   "external_service|needs_tests|non_trivial"
+  ],
+  "external_service|non_trivial": [
+   4,
+   "external_service|non_trivial"
+  ],
+  "external_service|non_trivial|touches_shared_behavior": [
+   4,
+   "external_service|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "external_service|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|non_trivial|trivial": [
+   4,
+   "external_service|non_trivial"
+  ],
+  "external_service|touches_shared_behavior": [
+   4,
+   "external_service|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|touches_shared_behavior|trivial": [
+   4,
+   "external_service|non_trivial|touches_shared_behavior"
+  ],
+  "external_service|trivial": [
+   4,
+   "external_service|non_trivial"
+  ],
+  "multi_file": [
+   4,
+   "multi_file|non_trivial"
+  ],
+  "multi_file|needs_commit": [
+   4,
+   "multi_file|needs_commit|non_trivial"
+  ],
+  "multi_file|needs_commit|needs_review": [
+   4,
+   "multi_file|needs_commit|needs_review|non_trivial"
+  ],
+  "multi_file|needs_commit|needs_review|needs_tests": [
+   4,
+   "multi_file|needs_commit|needs_review|needs_tests|non_trivial"
+  ],
+  "multi_file|needs_commit|needs_review|needs_tests|non_trivial": [
+   4,
+   "multi_file|needs_commit|needs_review|needs_tests|non_trivial"
+  ],
+  "multi_file|needs_commit|needs_review|needs_tests|non_trivial|touches_shared_behavior": [
+   4,
+   "multi_file|needs_commit|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_commit|needs_review|needs_tests|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "multi_file|needs_commit|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_commit|needs_review|needs_tests|non_trivial|trivial": [
+   4,
+   "multi_file|needs_commit|needs_review|needs_tests|non_trivial"
+  ],
+  "multi_file|needs_commit|needs_review|needs_tests|touches_shared_behavior": [
+   4,
+   "multi_file|needs_commit|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_commit|needs_review|needs_tests|touches_shared_behavior|trivial": [
+   4,
+   "multi_file|needs_commit|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_commit|needs_review|needs_tests|trivial": [
+   4,
+   "multi_file|needs_commit|needs_review|needs_tests|non_trivial"
+  ],
+  "multi_file|needs_commit|needs_review|non_trivial": [
+   4,
+   "multi_file|needs_commit|needs_review|non_trivial"
+  ],
+  "multi_file|needs_commit|needs_review|non_trivial|touches_shared_behavior": [
+   4,
+   "multi_file|needs_commit|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_commit|needs_review|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "multi_file|needs_commit|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_commit|needs_review|non_trivial|trivial": [
+   4,
+   "multi_file|needs_commit|needs_review|non_trivial"
+  ],
+  "multi_file|needs_commit|needs_review|touches_shared_behavior": [
+   4,
+   "multi_file|needs_commit|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_commit|needs_review|touches_shared_behavior|trivial": [
+   4,
+   "multi_file|needs_commit|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_commit|needs_review|trivial": [
+   4,
+   "multi_file|needs_commit|needs_review|non_trivial"
+  ],
+  "multi_file|needs_commit|needs_tests": [
+   4,
+   "multi_file|needs_commit|needs_tests|non_trivial"
+  ],
+  "multi_file|needs_commit|needs_tests|non_trivial": [
+   4,
+   "multi_file|needs_commit|needs_tests|non_trivial"
+  ],
+  "multi_file|needs_commit|needs_tests|non_trivial|touches_shared_behavior": [
+   4,
+   "multi_file|needs_commit|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_commit|needs_tests|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "multi_file|needs_commit|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_commit|needs_tests|non_trivial|trivial": [
+   4,
+   "multi_file|needs_commit|needs_tests|non_trivial"
+  ],
+  "multi_file|needs_commit|needs_tests|touches_shared_behavior": [
+   4,
+   "multi_file|needs_commit|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_commit|needs_tests|touches_shared_behavior|trivial": [
+   4,
+   "multi_file|needs_commit|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_commit|needs_tests|trivial": [
+   4,
+   "multi_file|needs_commit|needs_tests|non_trivial"
+  ],
+  "multi_file|needs_commit|non_trivial": [
+   4,
+   "multi_file|needs_commit|non_trivial"
+  ],
+  "multi_file|needs_commit|non_trivial|touches_shared_behavior": [
+   4,
+   "multi_file|needs_commit|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_commit|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "multi_file|needs_commit|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_commit|non_trivial|trivial": [
+   4,
+   "multi_file|needs_commit|non_trivial"
+  ],
+  "multi_file|needs_commit|touches_shared_behavior": [
+   4,
+   "multi_file|needs_commit|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_commit|touches_shared_behavior|trivial": [
+   4,
+   "multi_file|needs_commit|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_commit|trivial": [
+   4,
+   "multi_file|needs_commit|non_trivial"
+  ],
+  "multi_file|needs_review": [
+   4,
+   "multi_file|needs_review|non_trivial"
+  ],
+  "multi_file|needs_review|needs_tests": [
+   4,
+   "multi_file|needs_review|needs_tests|non_trivial"
+  ],
+  "multi_file|needs_review|needs_tests|non_trivial": [
+   4,
+   "multi_file|needs_review|needs_tests|non_trivial"
+  ],
+  "multi_file|needs_review|needs_tests|non_trivial|touches_shared_behavior": [
+   4,
+   "multi_file|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_review|needs_tests|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "multi_file|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_review|needs_tests|non_trivial|trivial": [
+   4,
+   "multi_file|needs_review|needs_tests|non_trivial"
+  ],
+  "multi_file|needs_review|needs_tests|touches_shared_behavior": [
+   4,
+   "multi_file|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_review|needs_tests|touches_shared_behavior|trivial": [
+   4,
+   "multi_file|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_review|needs_tests|trivial": [
+   4,
+   "multi_file|needs_review|needs_tests|non_trivial"
+  ],
+  "multi_file|needs_review|non_trivial": [
+   4,
+   "multi_file|needs_review|non_trivial"
+  ],
+  "multi_file|needs_review|non_trivial|touches_shared_behavior": [
+   4,
+   "multi_file|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_review|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "multi_file|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_review|non_trivial|trivial": [
+   4,
+   "multi_file|needs_review|non_trivial"
+  ],
+  "multi_file|needs_review|touches_shared_behavior": [
+   4,
+   "multi_file|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_review|touches_shared_behavior|trivial": [
+   4,
+   "multi_file|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_review|trivial": [
+   4,
+   "multi_file|needs_review|non_trivial"
+  ],
+  "multi_file|needs_tests": [
+   4,
+   "multi_file|needs_tests|non_trivial"
+  ],
+  "multi_file|needs_tests|non_trivial": [
+   4,
+   "multi_file|needs_tests|non_trivial"
+  ],
+  "multi_file|needs_tests|non_trivial|touches_shared_behavior": [
+   4,
+   "multi_file|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_tests|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "multi_file|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_tests|non_trivial|trivial": [
+   4,
+   "multi_file|needs_tests|non_trivial"
+  ],
+  "multi_file|needs_tests|touches_shared_behavior": [
+   4,
+   "multi_file|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_tests|touches_shared_behavior|trivial": [
+   4,
+   "multi_file|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|needs_tests|trivial": [
+   4,
+   "multi_file|needs_tests|non_trivial"
+  ],
+  "multi_file|non_trivial": [
+   4,
+   "multi_file|non_trivial"
+  ],
+  "multi_file|non_trivial|touches_shared_behavior": [
+   4,
+   "multi_file|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "multi_file|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|non_trivial|trivial": [
+   4,
+   "multi_file|non_trivial"
+  ],
+  "multi_file|touches_shared_behavior": [
+   4,
+   "multi_file|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|touches_shared_behavior|trivial": [
+   4,
+   "multi_file|non_trivial|touches_shared_behavior"
+  ],
+  "multi_file|trivial": [
+   4,
+   "multi_file|non_trivial"
+  ],
+  "needs_commit": [
+   0,
+   "needs_commit|non_trivial"
+  ],
+  "needs_commit|needs_review": [
+   0,
+   "needs_commit|needs_review|non_trivial"
+  ],
+  "needs_commit|needs_review|needs_tests": [
+   0,
+   "needs_commit|needs_review|needs_tests|non_trivial"
+  ],
+  "needs_commit|needs_review|needs_tests|non_trivial": [
+   0,
+   "needs_commit|needs_review|needs_tests|non_trivial"
+  ],
+  "needs_commit|needs_review|needs_tests|non_trivial|touches_shared_behavior": [
+   4,
+   "needs_commit|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "needs_commit|needs_review|needs_tests|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "needs_commit|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "needs_commit|needs_review|needs_tests|non_trivial|trivial": [
+   0,
+   "needs_commit|needs_review|needs_tests|non_trivial"
+  ],
+  "needs_commit|needs_review|needs_tests|touches_shared_behavior": [
+   4,
+   "needs_commit|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "needs_commit|needs_review|needs_tests|touches_shared_behavior|trivial": [
+   4,
+   "needs_commit|needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "needs_commit|needs_review|needs_tests|trivial": [
+   5,
+   "needs_commit|needs_review|needs_tests|trivial"
+  ],
+  "needs_commit|needs_review|non_trivial": [
+   0,
+   "needs_commit|needs_review|non_trivial"
+  ],
+  "needs_commit|needs_review|non_trivial|touches_shared_behavior": [
+   4,
+   "needs_commit|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "needs_commit|needs_review|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "needs_commit|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "needs_commit|needs_review|non_trivial|trivial": [
+   0,
+   "needs_commit|needs_review|non_trivial"
+  ],
+  "needs_commit|needs_review|touches_shared_behavior": [
+   4,
+   "needs_commit|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "needs_commit|needs_review|touches_shared_behavior|trivial": [
+   4,
+   "needs_commit|needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "needs_commit|needs_review|trivial": [
+   5,
+   "needs_commit|needs_review|trivial"
+  ],
+  "needs_commit|needs_tests": [
+   0,
+   "needs_commit|needs_tests|non_trivial"
+  ],
+  "needs_commit|needs_tests|non_trivial": [
+   0,
+   "needs_commit|needs_tests|non_trivial"
+  ],
+  "needs_commit|needs_tests|non_trivial|touches_shared_behavior": [
+   4,
+   "needs_commit|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "needs_commit|needs_tests|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "needs_commit|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "needs_commit|needs_tests|non_trivial|trivial": [
+   0,
+   "needs_commit|needs_tests|non_trivial"
+  ],
+  "needs_commit|needs_tests|touches_shared_behavior": [
+   4,
+   "needs_commit|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "needs_commit|needs_tests|touches_shared_behavior|trivial": [
+   4,
+   "needs_commit|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "needs_commit|needs_tests|trivial": [
+   5,
+   "needs_commit|needs_tests|trivial"
+  ],
+  "needs_commit|non_trivial": [
+   0,
+   "needs_commit|non_trivial"
+  ],
+  "needs_commit|non_trivial|touches_shared_behavior": [
+   4,
+   "needs_commit|non_trivial|touches_shared_behavior"
+  ],
+  "needs_commit|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "needs_commit|non_trivial|touches_shared_behavior"
+  ],
+  "needs_commit|non_trivial|trivial": [
+   0,
+   "needs_commit|non_trivial"
+  ],
+  "needs_commit|touches_shared_behavior": [
+   4,
+   "needs_commit|non_trivial|touches_shared_behavior"
+  ],
+  "needs_commit|touches_shared_behavior|trivial": [
+   4,
+   "needs_commit|non_trivial|touches_shared_behavior"
+  ],
+  "needs_commit|trivial": [
+   5,
+   "needs_commit|trivial"
+  ],
+  "needs_review": [
+   0,
+   "needs_review|non_trivial"
+  ],
+  "needs_review|needs_tests": [
+   0,
+   "needs_review|needs_tests|non_trivial"
+  ],
+  "needs_review|needs_tests|non_trivial": [
+   0,
+   "needs_review|needs_tests|non_trivial"
+  ],
+  "needs_review|needs_tests|non_trivial|touches_shared_behavior": [
+   4,
+   "needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "needs_review|needs_tests|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "needs_review|needs_tests|non_trivial|trivial": [
+   0,
+   "needs_review|needs_tests|non_trivial"
+  ],
+  "needs_review|needs_tests|touches_shared_behavior": [
+   4,
+   "needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "needs_review|needs_tests|touches_shared_behavior|trivial": [
+   4,
+   "needs_review|needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "needs_review|needs_tests|trivial": [
+   5,
+   "needs_review|needs_tests|trivial"
+  ],
+  "needs_review|non_trivial": [
+   0,
+   "needs_review|non_trivial"
+  ],
+  "needs_review|non_trivial|touches_shared_behavior": [
+   4,
+   "needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "needs_review|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "needs_review|non_trivial|trivial": [
+   0,
+   "needs_review|non_trivial"
+  ],
+  "needs_review|touches_shared_behavior": [
+   4,
+   "needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "needs_review|touches_shared_behavior|trivial": [
+   4,
+   "needs_review|non_trivial|touches_shared_behavior"
+  ],
+  "needs_review|trivial": [
+   5,
+   "needs_review|trivial"
+  ],
+  "needs_tests": [
+   0,
+   "needs_tests|non_trivial"
+  ],
+  "needs_tests|non_trivial": [
+   0,
+   "needs_tests|non_trivial"
+  ],
+  "needs_tests|non_trivial|touches_shared_behavior": [
+   4,
+   "needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "needs_tests|non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "needs_tests|non_trivial|trivial": [
+   0,
+   "needs_tests|non_trivial"
+  ],
+  "needs_tests|touches_shared_behavior": [
+   4,
+   "needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "needs_tests|touches_shared_behavior|trivial": [
+   4,
+   "needs_tests|non_trivial|touches_shared_behavior"
+  ],
+  "needs_tests|trivial": [
+   5,
+   "needs_tests|trivial"
+  ],
+  "non_trivial": [
+   0,
+   "non_trivial"
+  ],
+  "non_trivial|touches_shared_behavior": [
+   4,
+   "non_trivial|touches_shared_behavior"
+  ],
+  "non_trivial|touches_shared_behavior|trivial": [
+   4,
+   "non_trivial|touches_shared_behavior"
+  ],
+  "non_trivial|trivial": [
+   0,
+   "non_trivial"
+  ],
+  "touches_shared_behavior": [
+   4,
+   "non_trivial|touches_shared_behavior"
+  ],
+  "touches_shared_behavior|trivial": [
+   4,
+   "non_trivial|touches_shared_behavior"
+  ],
+  "trivial": [
+   5,
+   "trivial"
+  ]
+ },
+ "plans": [
+  {
+   "blocked": [
+    [
+     "run-broad-tests",
+     "no_shared_or_cross_module_behavior_fact"
+    ]
+   ],
+   "selected": [
+    [
+     10,
+     "inspect-repository",
+     "code_change_requires_repository_context"
+    ],
+    [
+     20,
+     "classify-change-risk",
+     "code_change_requires_risk_classification"
+    ],
+    [
+     30,
+     "create-implementation-plan",
+     "risk_or_scope_requires_explicit_plan"
+    ],
+    [
+     40,
+     "critique-plan",
+     "planned_change_requires_plan_critique"
+    ],
+    [
+     50,
+     "implement-atomic-change",
+     "code_change_requires_atomic_implementation"
+    ],
+    [
+     60,
+     "run-focused-tests",
+     "code_change_requires_focused_validation"
+    ],
+    [
+     80,
+     "review-diff",
+     "every_code_change_requires_review"
+    ],
+    [
+     90,
+     "validate-final-design",
+     "every_code_change_requires_architect_validation"
+    ],
+    [
+     100,
+     "validate-final-risks",
+     "every_code_change_requires_critic_validation"
+    ],
+    [
+     105,
+     "commit-atomic-change",
+     "every_code_change_requires_atomic_commit"
+    ],
+    [
+     110,
+     "report-result",
+     "every_harness_run_reports_outcome"
+    ]
+   ]
+  },
+  {
+   "blocked": [
+    [
+     "create-implementation-plan",
+     "risk_facts_do_not_require_explicit_plan"
+    ],
+    [
+     "critique-plan",
+     "no_plan_selected"
+    ],
+    [
+     "run-broad-tests",
+     "no_shared_or_cross_module_behavior_fact"
+    ]
+   ],
+   "selected": [
+    [
+     10,
+     "inspect-repository",
+     "code_change_requires_repository_context"
+    ],
+    [
+     20,
+     "classify-change-risk",
+     "code_change_requires_risk_classification"
+    ],
+    [
+     50,
+     "implement-atomic-change",
+     "code_change_requires_atomic_implementation"
+    ],
+    [
+     60,
+     "run-focused-tests",
+     "documentation_change_requires_focused_validation"
+    ],
+    [
+     80,
+     "review-diff",
+     "every_code_change_requires_review"
+    ],
+    [
+     90,
+     "validate-final-design",
+     "every_code_change_requires_architect_validation"
+    ],
+    [
+     100,
+     "validate-final-risks",
+     "every_code_change_requires_critic_validation"
+    ],
+    [
+     105,
+     "commit-atomic-change",
+     "every_code_change_requires_atomic_commit"
+    ],
+    [
+     110,
+     "report-result",
+     "every_harness_run_reports_outcome"
+    ]
+   ]
+  },
+  {
+   "blocked": [],
+   "selected": [
+    [
+     10,
+     "inspect-repository",
+     "code_change_requires_repository_context"
+    ],
+    [
+     20,
+     "classify-change-risk",
+     "code_change_requires_risk_classification"
+    ],
+    [
+     30,
+     "create-implementation-plan",
+     "risk_or_scope_requires_explicit_plan"
+    ],
+    [
+     40,
+     "critique-plan",
+     "planned_change_requires_plan_critique"
+    ],
+    [
+     50,
+     "implement-atomic-change",
+     "code_change_requires_atomic_implementation"
+    ],
+    [
+     60,
+     "run-focused-tests",
+     "documentation_change_requires_focused_validation"
+    ],
+    [
+     70,
+     "run-broad-tests",
+     "shared_or_cross_module_behavior_changed"
+    ],
+    [
+     80,
+     "review-diff",
+     "every_code_change_requires_review"
+    ],
+    [
+     90,
+     "validate-final-design",
+     "every_code_change_requires_architect_validation"
+    ],
+    [
+     100,
+     "validate-final-risks",
+     "every_code_change_requires_critic_validation"
+    ],
+    [
+     105,
+     "commit-atomic-change",
+     "every_code_change_requires_atomic_commit"
+    ],
+    [
+     110,
+     "report-result",
+     "every_harness_run_reports_outcome"
+    ]
+   ]
+  },
+  {
+   "blocked": [
+    [
+     "run-broad-tests",
+     "no_shared_or_cross_module_behavior_fact"
+    ]
+   ],
+   "selected": [
+    [
+     10,
+     "inspect-repository",
+     "code_change_requires_repository_context"
+    ],
+    [
+     20,
+     "classify-change-risk",
+     "code_change_requires_risk_classification"
+    ],
+    [
+     30,
+     "create-implementation-plan",
+     "risk_or_scope_requires_explicit_plan"
+    ],
+    [
+     40,
+     "critique-plan",
+     "planned_change_requires_plan_critique"
+    ],
+    [
+     50,
+     "implement-atomic-change",
+     "code_change_requires_atomic_implementation"
+    ],
+    [
+     60,
+     "run-focused-tests",
+     "documentation_change_requires_focused_validation"
+    ],
+    [
+     80,
+     "review-diff",
+     "every_code_change_requires_review"
+    ],
+    [
+     90,
+     "validate-final-design",
+     "every_code_change_requires_architect_validation"
+    ],
+    [
+     100,
+     "validate-final-risks",
+     "every_code_change_requires_critic_validation"
+    ],
+    [
+     105,
+     "commit-atomic-change",
+     "every_code_change_requires_atomic_commit"
+    ],
+    [
+     110,
+     "report-result",
+     "every_harness_run_reports_outcome"
+    ]
+   ]
+  },
+  {
+   "blocked": [],
+   "selected": [
+    [
+     10,
+     "inspect-repository",
+     "code_change_requires_repository_context"
+    ],
+    [
+     20,
+     "classify-change-risk",
+     "code_change_requires_risk_classification"
+    ],
+    [
+     30,
+     "create-implementation-plan",
+     "risk_or_scope_requires_explicit_plan"
+    ],
+    [
+     40,
+     "critique-plan",
+     "planned_change_requires_plan_critique"
+    ],
+    [
+     50,
+     "implement-atomic-change",
+     "code_change_requires_atomic_implementation"
+    ],
+    [
+     60,
+     "run-focused-tests",
+     "code_change_requires_focused_validation"
+    ],
+    [
+     70,
+     "run-broad-tests",
+     "shared_or_cross_module_behavior_changed"
+    ],
+    [
+     80,
+     "review-diff",
+     "every_code_change_requires_review"
+    ],
+    [
+     90,
+     "validate-final-design",
+     "every_code_change_requires_architect_validation"
+    ],
+    [
+     100,
+     "validate-final-risks",
+     "every_code_change_requires_critic_validation"
+    ],
+    [
+     105,
+     "commit-atomic-change",
+     "every_code_change_requires_atomic_commit"
+    ],
+    [
+     110,
+     "report-result",
+     "every_harness_run_reports_outcome"
+    ]
+   ]
+  },
+  {
+   "blocked": [
+    [
+     "create-implementation-plan",
+     "risk_facts_do_not_require_explicit_plan"
+    ],
+    [
+     "critique-plan",
+     "no_plan_selected"
+    ],
+    [
+     "run-broad-tests",
+     "no_shared_or_cross_module_behavior_fact"
+    ]
+   ],
+   "selected": [
+    [
+     10,
+     "inspect-repository",
+     "code_change_requires_repository_context"
+    ],
+    [
+     20,
+     "classify-change-risk",
+     "code_change_requires_risk_classification"
+    ],
+    [
+     50,
+     "implement-atomic-change",
+     "code_change_requires_atomic_implementation"
+    ],
+    [
+     60,
+     "run-focused-tests",
+     "code_change_requires_focused_validation"
+    ],
+    [
+     80,
+     "review-diff",
+     "every_code_change_requires_review"
+    ],
+    [
+     90,
+     "validate-final-design",
+     "every_code_change_requires_architect_validation"
+    ],
+    [
+     100,
+     "validate-final-risks",
+     "every_code_change_requires_critic_validation"
+    ],
+    [
+     105,
+     "commit-atomic-change",
+     "every_code_change_requires_atomic_commit"
+    ],
+    [
+     110,
+     "report-result",
+     "every_harness_run_reports_outcome"
+    ]
+   ]
+  }
+ ]
+}

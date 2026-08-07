@@ -28,6 +28,39 @@ SKILL_BY_ID = {skill.skill_id: skill for skill in SKILLS}
 SKILL_CODE_BY_ID = {skill.skill_id: index + 1 for index, skill in enumerate(SKILLS)}
 SKILL_ID_BY_CODE = {code: skill_id for skill_id, code in SKILL_CODE_BY_ID.items()}
 
+#: Skill classes every code change selects, regardless of request facts. The
+#: policy lives in one Wirelog rule; which skills belong to a class is data.
+MANDATORY_SKILL_CLASSES: tuple[str, ...] = (
+    "ContextSkill",
+    "RiskSkill",
+    "ChangeSkill",
+    "ReviewSkill",
+    "CommitSkill",
+)
+
+#: Skill classes selected only when the request needs an explicit plan.
+PLANNED_SKILL_CLASSES: tuple[str, ...] = ("PlanningSkill", "CritiqueSkill")
+
+#: Per-skill selection reasons for class-driven rules, which cannot carry a
+#: single literal reason in the rule head.
+SELECTION_REASON_BY_ID = {
+    "inspect-repository": 1,
+    "classify-change-risk": 2,
+    "create-implementation-plan": 3,
+    "critique-plan": 4,
+    "implement-atomic-change": 5,
+    "review-diff": 8,
+    "validate-final-design": 9,
+    "validate-final-risks": 10,
+    "commit-atomic-change": 13,
+}
+
+#: Per-skill blocking reasons for the class-driven blocked-plan rule.
+BLOCKING_REASON_BY_ID = {
+    "create-implementation-plan": 101,
+    "critique-plan": 102,
+}
+
 REASON_BY_CODE = {
     1: "code_change_requires_repository_context",
     2: "code_change_requires_risk_classification",
