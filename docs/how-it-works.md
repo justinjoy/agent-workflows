@@ -181,11 +181,16 @@ the consolidation.
 ### Optimizer caveat
 
 `select_plan` deliberately does not call `program.optimize()`. On pyrewire 1.0.4
-and wirelog 0.53.0 the optimizer silently zeroes the last bound head column when
-a rule joins a recursive relation with two or more lookups, which is the exact
-shape of the class-driven rules. `optimize()` remains in use where the rule
-shape is unaffected. `tests/test_selector_equivalence.py` pins the defect and
-fails once upstream fixes it, so the call can be restored.
+and wirelog 0.53.0 the optimizer silently shifts head bindings for any rule with
+four or more body atoms: bindings from the fourth atom onward move by one
+position and the last becomes zero. Every class-driven rule has that shape, so
+each selected skill would carry reason code 0. Reported upstream as
+semantic-reasoning/PyreWire#180.
+
+`optimize()` remains in use where the rule shape is unaffected — the surface
+closure in `ontology.derive` joins three atoms and is verified to produce
+identical output either way. `tests/test_selector_equivalence.py` pins the
+defect and fails once upstream fixes it, so the call can be restored.
 
 ## Atomic Skills
 

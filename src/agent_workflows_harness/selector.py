@@ -177,12 +177,16 @@ def select_plan(facts: RequestFacts, ontology: Ontology | None = None) -> SkillP
 
     with BatchProgram.from_string(build_program(facts, ontology)) as program:
         # program.optimize() is deliberately not called. On pyrewire 1.0.4 /
-        # wirelog 0.53.0 the optimizer silently zeroes a head column when a rule
-        # joins a recursive relation with two or more lookups, which is exactly
-        # the shape of the class-driven selection rules:
-        #   out(O, S, R) :- mand(C), isa(S, C), ord(S, O), rsn(S, R).
-        # yields R = 0 instead of the stored reason. See
-        # tests/test_selector_equivalence.py::test_optimizer_zeroes_reason_column.
+        # wirelog 0.53.0 the optimizer silently shifts head bindings for any
+        # rule with four or more body atoms, which is exactly the shape of the
+        # class-driven selection rules:
+        #   selected_skill(O, S, R) :-
+        #       request_type(...), mandatory_class(C), skill_isa(S, C),
+        #       skill_order(S, O), selection_reason(S, R).
+        # yields R = 0 instead of the stored reason. Reported as
+        # semantic-reasoning/PyreWire#180 and pinned by
+        # tests/test_selector_equivalence.py::
+        #   test_optimizer_corrupts_head_bindings_on_four_atom_rules.
         program.load_all_facts()
         result = program.evaluate()
         try:

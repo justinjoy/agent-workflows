@@ -120,29 +120,26 @@ def test_build_program_rejects_an_ontology_missing_a_required_class():
         build_program(RequestFacts.from_properties({"trivial"}), incomplete)
 
 
-def test_optimizer_zeroes_a_head_column_on_recursive_joins():
+def test_optimizer_corrupts_head_bindings_on_four_atom_rules():
     """Pins the upstream defect that forces select_plan to skip optimize().
 
-    pyrewire 1.0.4 / wirelog 0.53.0 drops the last bound head column when a rule
-    joins a recursive relation with two or more lookups. When this test fails,
-    the optimizer was fixed and `select_plan` should call `optimize()` again.
+    On pyrewire 1.0.4 / wirelog 0.53.0, a rule with four or more body atoms
+    comes back with its head bindings shifted by one from the fourth atom
+    onward, leaving the last one zero. Reported as
+    semantic-reasoning/PyreWire#180. When this test fails, the optimizer was
+    fixed and `select_plan` should call `optimize()` again.
     """
 
     from pyrewire import BatchProgram
 
     program_text = """
-.decl sub(a: int32, b: int32)
 .decl typ(s: int32, c: int32)
-.decl isa(s: int32, c: int32)
 .decl mand(c: int32)
 .decl ord(s: int32, o: int32)
 .decl rsn(s: int32, r: int32)
 .decl out(o: int32, s: int32, r: int32)
-isa(S, C) :- typ(S, C).
-isa(S, P) :- isa(S, C), sub(C, P).
-out(O, S, R) :- mand(C), isa(S, C), ord(S, O), rsn(S, R).
+out(O, S, R) :- mand(C), typ(S, C), ord(S, O), rsn(S, R).
 typ(1, 5).
-sub(5, 17).
 mand(5).
 ord(1, 10).
 rsn(1, 7).
@@ -165,6 +162,6 @@ rsn(1, 7).
     assert run(optimize=False) == [(10, 1, 7)]
     if run(optimize=True) == run(optimize=False):
         pytest.fail(
-            "pyrewire optimizer no longer drops the head column; "
+            "pyrewire optimizer no longer corrupts head bindings; "
             "re-enable program.optimize() in select_plan"
         )
