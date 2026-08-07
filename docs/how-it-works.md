@@ -133,10 +133,59 @@ harness that `billing_ledger` is a persistence surface is one entry in
 load: terms must be well formed, classes must be declared, `sub_class_of` must
 be acyclic, and mapped properties must be ones the selector supports.
 
-The bundled ontology also classifies every registered skill (`ReviewSkill`,
-`TestSkill`, and so on under `ValidationSkill`). The selector rules do not use
-that hierarchy yet; it is declared so rule consolidation can be verified
-against the current per-skill rules before replacing them.
+## Class-Driven Selection
+
+The same ontology classifies every registered skill, and the selector rules are
+written against those classes rather than against individual skills. Selecting
+the three review skills used to take three rules with the skill code, order, and
+reason written into each rule head:
+
+```
+selected_skill(80, 8, 8) :- request_type(Req, "code_change").
+selected_skill(90, 9, 9) :- request_type(Req, "code_change").
+selected_skill(100, 10, 10) :- request_type(Req, "code_change").
+```
+
+It now takes one rule that states the policy once, over any skill class marked
+mandatory:
+
+```
+selected_skill(O, S, R) :-
+    request_type(Req, "code_change"),
+    mandatory_class(C),
+    skill_isa(S, C),
+    skill_order(S, O),
+    selection_reason(S, R).
+```
+
+`skill_isa` is the same transitive closure used for surfaces, so a class rule
+reaches every subclass. The rule set dropped from 23 rules to 17, and no rule
+names a specific skill — a test enforces that. Which skills belong to a class,
+their order, and their reasons are catalog data in the ontology and the
+registry.
+
+The practical effect is that policy changes stop being rule edits. Moving
+`create-implementation-plan` into `ReviewSkill` makes it unconditional; moving a
+skill to a class no rule mentions removes it from every plan. Both are one entry
+in `skill_class`.
+
+Conditional selection stays in rules, because it is policy rather than catalog:
+planning and critique still depend on `needs_plan`, broad tests on
+`needs_broad_tests`, and focused tests still carry a different reason for
+documentation-only requests.
+
+Equivalence with the previous per-skill rules is pinned by a golden file
+covering all 320 property combinations `RequestFacts` accepts, captured before
+the consolidation.
+
+### Optimizer caveat
+
+`select_plan` deliberately does not call `program.optimize()`. On pyrewire 1.0.4
+and wirelog 0.53.0 the optimizer silently zeroes the last bound head column when
+a rule joins a recursive relation with two or more lookups, which is the exact
+shape of the class-driven rules. `optimize()` remains in use where the rule
+shape is unaffected. `tests/test_selector_equivalence.py` pins the defect and
+fails once upstream fixes it, so the call can be restored.
 
 ## Atomic Skills
 
