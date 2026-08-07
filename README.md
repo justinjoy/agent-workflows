@@ -35,6 +35,21 @@ The command emits JSON with request facts, selected skills, blocked skills, and
 rule reasons. Add `--decision-log path/to/decisions.jsonl` to append a durable
 selection record for the run.
 
+Requests can also be stated as ontology triples instead of prose. The harness
+infers request properties from a declared class hierarchy, so a surface is
+recognized by what it *is* rather than by the words used to describe it:
+
+```bash
+agent-workflows-harness --touches session_module --scope one_line
+```
+
+`session_module` contains none of the keywords the text classifier knows, yet
+`AuthSurface ⊑ SharedBehavior` still selects planning, critique, and broad
+tests. Each inferred property is reported with the subsumption path that
+produced it. Use `--ontology path/to/tbox.json` to supply your own TBox; adding
+vocabulary is a data change rather than a code change. See
+[How it works](docs/how-it-works.md#ontology-fact-source).
+
 Plugin hosts resolve the harness from `PATH`, the current workspace's `.venv`,
 or an importable active Python environment, in that order. They try every
 available form before treating the runtime as unavailable and do not install

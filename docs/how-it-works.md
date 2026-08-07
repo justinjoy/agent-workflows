@@ -76,6 +76,68 @@ The Python runtime depends on `pyrewire>=1.0.4,<2.0`. Runtime-backed tests are
 required and fail when PyreWire or its native Wirelog library cannot load; a
 load failure is not treated as a skipped optional integration.
 
+## Ontology Fact Source
+
+The text classifier recognizes risk by matching keywords. That fails whenever a
+request describes a risky surface without using the expected word:
+
+```
+"refactor auth workflow and add tests"
+  -> touches_shared_behavior  -> broad tests selected
+
+"small one-line change to the login session expiry"
+  -> trivial                  -> planning, critique, and broad tests blocked
+```
+
+Both requests change authentication behavior. Only the first says so in words
+the regex table happens to contain.
+
+The ontology fact source removes that dependence on phrasing. A request may be
+stated as ABox triples over a declared TBox:
+
+```bash
+agent-workflows-harness --touches session_module --scope one_line
+```
+
+`session_module` is declared as an `AuthSurface`, and `AuthSurface ⊑
+SharedBehavior ⊑ Surface`. Wirelog computes the transitive closure, so
+`touches_shared_behavior` is derived even though the individual carries no
+keyword. The same three gates the keyword path dropped are selected again.
+
+Derived properties are reported with the chain that produced them:
+
+```json
+"derived": [
+  {
+    "property": "touches_shared_behavior",
+    "from": "touches(req, session_module)",
+    "path": "session_module -> AuthSurface -> SharedBehavior"
+  }
+]
+```
+
+Documentation-only status is inferred rather than asserted: a request is
+`docs_only` when every surface it touches is a `DocSurface`. Touching a
+`readme` alongside an `auth_module` does not qualify.
+
+The selector remains deterministic and does not call an LLM. An LLM may propose
+the triples that reach the CLI, but every property is derived from declared
+classes and the closure over them. Ontology-derived properties merge with
+`--property` values and text classification, and existing invariants still
+apply: concrete risk evidence overrides a `trivial` hint, and `docs_only`
+combined with code impact is rejected as contradictory input.
+
+Supply a different TBox with `--ontology path/to/tbox.json`. Teaching the
+harness that `billing_ledger` is a persistence surface is one entry in
+`surface_class`, not an edit to the classifier. The document is validated on
+load: terms must be well formed, classes must be declared, `sub_class_of` must
+be acyclic, and mapped properties must be ones the selector supports.
+
+The bundled ontology also classifies every registered skill (`ReviewSkill`,
+`TestSkill`, and so on under `ValidationSkill`). The selector rules do not use
+that hierarchy yet; it is declared so rule consolidation can be verified
+against the current per-skill rules before replacing them.
+
 ## Atomic Skills
 
 The implementation harness can select these smaller skills:
