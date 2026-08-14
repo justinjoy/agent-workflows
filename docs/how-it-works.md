@@ -60,8 +60,34 @@ or explicitly non-trivial documentation may still select the larger workflow, wh
 as contradictory input. Requests with no risk or documentation facts fail
 closed to `non_trivial`.
 
+When the selector cannot run at all, the command emits an error document on
+stdout instead of a plan, keeps the human-readable cause on stderr, and exits
+with `3`:
+
+```json
+{
+  "error": {
+    "kind": "selector_unavailable",
+    "message": "PyreWire/Wirelog runtime unavailable. Ensure pyrewire is installed and WIRELOG_LIB points to libwirelog.",
+    "cause": "No module named 'pyrewire'"
+  }
+}
+```
+
+In `--text` mode the same failure prints one line instead:
+
+```
+error: selector_unavailable # No module named 'pyrewire'
+```
+
+The document deliberately carries no `selected` key, so a caller cannot read a
+dead runtime as an empty plan. Exit `3` is distinct from argparse's usage-error
+`2`, which still signals rejected input.
+
 Use `--decision-log path/to/decisions.jsonl` to append the request facts,
 selected skills, blocked skills, and rule reasons as durable JSON Lines records.
+A run that produced no plan appends an `agent_workflow.skill_plan_failed` record
+instead, so a failed selection still leaves a durable trace.
 
 The compatibility `implementation-skill` entrypoint remains stable for plugin
 hosts. A host first checks `PATH`, then an executable harness in the current

@@ -7,8 +7,10 @@ import sys
 from importlib.metadata import version
 from pathlib import Path
 
+from agent_workflows_harness import cli
 from agent_workflows_harness.facts import classify_request
 from agent_workflows_harness.models import RequestFacts
+from agent_workflows_harness.ontology import derive
 from agent_workflows_harness.registry import SKILL_BY_ID, SKILL_CODE_BY_ID
 from agent_workflows_harness.selector import build_program, select_plan, select_skills
 
@@ -375,6 +377,120 @@ def test_cli_appends_decision_record(tmp_path):
     assert records[0]["plan"]["selected"][0]["skill_id"] == "inspect-repository"
 
 
+def _fail_selector(message: str):
+    def _raise(facts):
+        raise RuntimeError(message)
+
+    return _raise
+
+
+def test_cli_reports_selector_failure_on_stdout_as_json(capsys, monkeypatch, tmp_path):
+    log_path = tmp_path / "decisions.jsonl"
+    monkeypatch.setattr(cli, "select_plan", _fail_selector("libwirelog\nnot found"))
+
+    code = cli.main(["--property", "trivial", "--decision-log", str(log_path)])
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert code == cli.EXIT_SELECTOR_UNAVAILABLE == 3
+    assert payload["error"]["kind"] == "selector_unavailable"
+    # Pin the documented message so docs/how-it-works.md cannot drift from it.
+    assert payload["error"]["message"] == cli.RUNTIME_MESSAGE
+    assert cli.RUNTIME_MESSAGE in (ROOT / "docs" / "how-it-works.md").read_text(
+        encoding="utf-8"
+    )
+    # A dead runtime must not be readable as an empty plan.
+    assert "selected" not in payload
+    assert "blocked" not in payload
+    # The cause is collapsed to one line so it cannot break a line-per-record reader.
+    assert payload["error"]["cause"] == "libwirelog not found"
+    assert "WIRELOG_LIB" in captured.err
+
+    record = json.loads(log_path.read_text(encoding="utf-8").splitlines()[0])
+    assert record["event_type"] == "agent_workflow.skill_plan_failed"
+    assert record["error"]["kind"] == "selector_unavailable"
+
+
+def test_cli_reports_selector_failure_in_text_mode(capsys, monkeypatch):
+    monkeypatch.setattr(cli, "select_plan", _fail_selector("libwirelog\nnot found"))
+
+    code = cli.main(["--text", "--property", "trivial"])
+    captured = capsys.readouterr()
+
+    assert code == cli.EXIT_SELECTOR_UNAVAILABLE
+    assert captured.out.splitlines() == [
+        "error: selector_unavailable # libwirelog not found"
+    ]
+
+
+def test_cli_reports_an_unloadable_runtime_from_the_ontology_step(capsys, monkeypatch):
+    # Loading libwirelog fails inside derive(), before the selector runs. This
+    # used to reach parser.error and exit 2 with empty stdout.
+    def _raise(touches, scopes, ontology):
+        raise OSError("Could not find libwirelog")
+
+    monkeypatch.setattr(cli, "derive", _raise)
+
+    code = cli.main(["--property", "trivial"])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert code == cli.EXIT_SELECTOR_UNAVAILABLE
+    assert payload["error"]["kind"] == "selector_unavailable"
+    assert "selected" not in payload
+
+
+def test_cli_keeps_undeclared_ontology_terms_an_input_error(capsys, monkeypatch):
+    def _raise(touches, scopes, ontology):
+        raise ValueError("unknown surface 'nope'")
+
+    monkeypatch.setattr(cli, "derive", _raise)
+
+    try:
+        cli.main(["--touches", "nope"])
+    except SystemExit as exc:
+        assert exc.code == 2
+    else:  # pragma: no cover
+        raise AssertionError("expected an argparse usage error")
+
+    assert capsys.readouterr().out == ""
+
+
+def test_derive_without_abox_triples_does_not_need_the_wirelog_runtime(monkeypatch):
+    monkeypatch.setitem(sys.modules, "pyrewire", None)
+
+    assert derive((), ()) == ()
+
+
+def test_an_unwritable_decision_log_never_suppresses_the_answer(capsys, tmp_path):
+    blocker = tmp_path / "blocker.txt"
+    blocker.write_text("not a directory", encoding="utf-8")
+    unwritable = str(blocker / "sub" / "decisions.jsonl")
+
+    plan_code = cli.main(["--property", "trivial", "--decision-log", unwritable])
+    plan_output = capsys.readouterr()
+
+    assert plan_code == 0
+    assert json.loads(plan_output.out)["selected"]
+    assert "decision log unavailable" in plan_output.err
+
+
+def test_an_unwritable_decision_log_never_changes_the_failure_exit_code(
+    capsys, monkeypatch, tmp_path
+):
+    blocker = tmp_path / "blocker.txt"
+    blocker.write_text("not a directory", encoding="utf-8")
+    monkeypatch.setattr(cli, "select_plan", _fail_selector("dead runtime"))
+
+    code = cli.main(
+        ["--property", "trivial", "--decision-log", str(blocker / "sub" / "log.jsonl")]
+    )
+    captured = capsys.readouterr()
+
+    assert code == cli.EXIT_SELECTOR_UNAVAILABLE
+    assert json.loads(captured.out)["error"]["kind"] == "selector_unavailable"
+    assert "decision log unavailable" in captured.err
+
+
 def test_cli_rejects_unknown_property_without_running_wirelog():
     proc = subprocess.run(
         [
@@ -390,7 +506,9 @@ def test_cli_rejects_unknown_property_without_running_wirelog():
         capture_output=True,
     )
 
+    # Exit 2 stays reserved for rejected input, distinct from a dead runtime.
     assert proc.returncode == 2
+    assert proc.stdout == ""
     assert "unsupported request properties" in proc.stderr
     assert "Traceback" not in proc.stderr
 
