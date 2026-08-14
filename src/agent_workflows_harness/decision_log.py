@@ -24,6 +24,27 @@ def append_decision_record(
         "recorded_at": datetime.now(UTC).isoformat(),
         "plan": plan_to_dict(plan, derivations),
     }
+    _append(path, record)
+
+
+def append_failure_record(path: str | Path, kind: str, cause: str) -> None:
+    """Append one durable record for a run that produced no plan.
+
+    Without this, a harness that cannot select a plan leaves no trace at all,
+    which is indistinguishable from a run that was never started.
+    """
+
+    _append(
+        path,
+        {
+            "event_type": "agent_workflow.skill_plan_failed",
+            "recorded_at": datetime.now(UTC).isoformat(),
+            "error": {"kind": kind, "cause": cause},
+        },
+    )
+
+
+def _append(path: str | Path, record: dict) -> None:
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     with target.open("a", encoding="utf-8") as fh:

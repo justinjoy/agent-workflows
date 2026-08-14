@@ -347,8 +347,6 @@ def derive(
 ) -> tuple[Derivation, ...]:
     """Evaluate the TBox closure over ABox triples and return derived properties."""
 
-    from pyrewire import BatchProgram
-
     active = ontology or DEFAULT_ONTOLOGY
     symbols = _Symbols(active)
 
@@ -366,7 +364,11 @@ def derive(
                 f"unknown scope {scope!r}; declare it in the ontology scope_property"
             )
     if not touched and not scoped:
+        # A request with no ABox triples has nothing to derive, so it must not
+        # require the Wirelog runtime to be loadable.
         return ()
+
+    from pyrewire import BatchProgram
 
     program_text = build_program(active, symbols, touched, scoped)
     with BatchProgram.from_string(program_text) as program:
