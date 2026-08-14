@@ -96,6 +96,11 @@ def main(argv: list[str] | None = None) -> int:
             print(f"    {item.request_property} <= {item.source} # {' -> '.join(item.path)}")
         for skill in plan.selected:
             print(f"{skill.order:03d} {skill.skill_id} # {skill.reason}")
+        # Blocked skills carry no order, so they are labelled instead of being
+        # given a fake step number. Omitting them made a plan that dropped a
+        # gate look identical to a full plan.
+        for skill in plan.blocked:
+            print(f"blocked: {skill.skill_id} # {skill.reason}")
         return 0
 
     print(json.dumps(plan_to_dict(plan, derivations), indent=2, sort_keys=True))

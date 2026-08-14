@@ -310,6 +310,46 @@ def test_cli_emits_machine_readable_json():
     )
 
 
+def test_cli_text_mode_reports_blocked_skills_with_reasons():
+    trivial = subprocess.run(
+        [sys.executable, "-m", "agent_workflows_harness.cli", "--text", "--property", "trivial"],
+        check=True,
+        env=_subprocess_env(),
+        text=True,
+        capture_output=True,
+    )
+    planned = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "agent_workflows_harness.cli",
+            "--text",
+            "--property",
+            "non_trivial",
+            "--property",
+            "touches_shared_behavior",
+        ],
+        check=True,
+        env=_subprocess_env(),
+        text=True,
+        capture_output=True,
+    )
+
+    lines = trivial.stdout.splitlines()
+    blocked = [line for line in lines if line.startswith("blocked: ")]
+
+    assert blocked == [
+        "blocked: create-implementation-plan # risk_facts_do_not_require_explicit_plan",
+        "blocked: critique-plan # no_plan_selected",
+        "blocked: run-broad-tests # no_shared_or_cross_module_behavior_fact",
+    ]
+    # Selected steps keep their ordered numeric shape.
+    assert lines[0] == "010 inspect-repository # code_change_requires_repository_context"
+    # A plan that blocks nothing prints no blocked line at all.
+    assert "blocked: " not in planned.stdout
+    assert "create-implementation-plan" in planned.stdout
+
+
 def test_cli_appends_decision_record(tmp_path):
     log_path = tmp_path / "decisions.jsonl"
 
