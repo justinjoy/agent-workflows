@@ -12,9 +12,13 @@ results, and review findings.
 
 Output `architect_validation` covering:
 
-- the `approved_candidate_tree` ID being approved
+- an explicit `verdict` of `approved` or `blocked`
+- the `approved_candidate_tree` ID being judged
 - behavior matches the objective
 - commit or unit boundaries are coherent
 - public contracts and docs are consistent
+
+A `blocked` verdict must state its reasons and must be surfaced in
+`report-result`. It stops the commit gate; it never ends the run silently.
 
 Any candidate change invalidates this approval.

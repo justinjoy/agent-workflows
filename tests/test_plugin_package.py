@@ -8,6 +8,8 @@ import tomllib
 import zipfile
 from pathlib import Path
 
+from agent_workflows_harness.registry import SKILL_BY_ID
+
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_ATOMIC_SKILLS = {
@@ -28,6 +30,12 @@ EXPECTED_ATOMIC_SKILLS = {
 
 def _json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _flat(text: str) -> str:
+    """Collapse whitespace so phrase assertions survive a paragraph reflow."""
+
+    return " ".join(text.split())
 
 
 def test_atomic_skills_exist_in_plugin_layout():
@@ -88,6 +96,51 @@ def test_implementation_skill_requires_review_consensus_before_commit():
     assert "output must echo" in review
     assert "approved candidate path set" in review
     assert "content digest reviewed" in review
+
+
+def test_gate_outcomes_must_reach_the_final_report():
+    # This is a staleness tripwire, not a semantic gate: it proves the reporting
+    # contract still names every gate artifact, not that the prose demands them.
+    skill_root = ROOT / "plugins" / "dev-workflows" / "skills"
+    report = _flat((skill_root / "report-result" / "SKILL.md").read_text(encoding="utf-8"))
+    implementation = _flat(
+        (skill_root / "implementation-skill" / "SKILL.md").read_text(encoding="utf-8")
+    )
+
+    # Derive the artifact names from the registry so renaming a skill output
+    # cannot leave the reporting contract silently stale. The two explicit names
+    # guard the skill_id set itself: a typo there would empty the loop silently.
+    gate_outputs = {
+        SKILL_BY_ID[skill_id].output
+        for skill_id in (
+            "create-implementation-plan",
+            "critique-plan",
+            "review-diff",
+            "validate-final-design",
+            "validate-final-risks",
+        )
+    }
+    assert {"architect_validation", "critic_validation"} <= gate_outputs
+
+    for document in (report, implementation):
+        for output in gate_outputs:
+            assert output in document
+        # `approved_candidate_tree` is a commit-gate term, not a registry output.
+        assert "approved_candidate_tree" in document
+        assert "blocked skills and their rule reasons" in document
+        assert "degraded sequential mode" in document
+
+    assert "on every termination of the run" in report
+    assert "Never end a rejected run silently." in report
+    assert "on every termination of the run" in implementation
+    assert "omitting its verdict is a silent termination, not a completed run." in (
+        implementation
+    )
+
+    for skill_id in ("validate-final-design", "validate-final-risks"):
+        contract = _flat((skill_root / skill_id / "SKILL.md").read_text(encoding="utf-8"))
+        assert "`verdict` of `approved` or `blocked`" in contract
+        assert "it never ends the run silently" in contract
 
 
 def test_provider_versions_follow_release_policy():

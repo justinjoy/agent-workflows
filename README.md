@@ -8,8 +8,8 @@ into smaller atomic skills and uses explicit rules to select the skill plan for
 each request.
 
 Every change, including documentation, is validated, independently reviewed,
-approved by Architect and Critic, and committed as an atomic unit before the
-result is reported.
+approved by Architect and Critic, and committed as an atomic unit. Every run
+reports its result, including a run a gate rejects before any commit.
 
 ## Included Skills
 
