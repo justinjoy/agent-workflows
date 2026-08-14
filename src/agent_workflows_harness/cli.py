@@ -55,12 +55,14 @@ def _record(path: str | None, append, *record_args) -> None:
     that was already produced. It is a trace, not the answer.
     """
 
-    if not path:
+    # Only an absent flag skips the record. An empty --decision-log value is a
+    # caller mistake and must warn rather than drop the trace in silence.
+    if path is None:
         return
     try:
         append(path, *record_args)
-    except OSError as exc:
-        print(f"decision log unavailable: {path}: {exc}", file=sys.stderr)
+    except (OSError, ValueError) as exc:
+        print(f"decision log unavailable: {path!r}: {exc}", file=sys.stderr)
 
 
 def _parser() -> argparse.ArgumentParser:

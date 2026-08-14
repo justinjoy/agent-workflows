@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 from importlib.metadata import version
@@ -394,11 +395,7 @@ def test_cli_reports_selector_failure_on_stdout_as_json(capsys, monkeypatch, tmp
 
     assert code == cli.EXIT_SELECTOR_UNAVAILABLE == 3
     assert payload["error"]["kind"] == "selector_unavailable"
-    # Pin the documented message so docs/how-it-works.md cannot drift from it.
     assert payload["error"]["message"] == cli.RUNTIME_MESSAGE
-    assert cli.RUNTIME_MESSAGE in (ROOT / "docs" / "how-it-works.md").read_text(
-        encoding="utf-8"
-    )
     # A dead runtime must not be readable as an empty plan.
     assert "selected" not in payload
     assert "blocked" not in payload
@@ -409,6 +406,41 @@ def test_cli_reports_selector_failure_on_stdout_as_json(capsys, monkeypatch, tmp
     record = json.loads(log_path.read_text(encoding="utf-8").splitlines()[0])
     assert record["event_type"] == "agent_workflow.skill_plan_failed"
     assert record["error"]["kind"] == "selector_unavailable"
+
+
+def test_docs_describe_the_failure_contract_the_cli_emits():
+    doc = (ROOT / "docs" / "how-it-works.md").read_text(encoding="utf-8")
+    # Parse the documented example rather than grepping for one literal, so no
+    # field of the published contract can drift unnoticed.
+    # Not every fenced json block is one document: the decision log is JSON
+    # Lines. Parse only the candidates, then select on parsed shape.
+    candidates = [
+        block
+        for block in re.findall(r"```json\n(.*?)\n```", doc, re.DOTALL)
+        if '"error"' in block
+    ]
+    documented = [
+        parsed for parsed in map(json.loads, candidates) if set(parsed) == {"error"}
+    ]
+
+    assert len(documented) == 1, (
+        f"expected exactly one documented error contract in a ```json fence, "
+        f"found {len(documented)} among {len(candidates)} candidate blocks"
+    )
+    assert documented[0] == {
+        "error": {
+            "kind": "selector_unavailable",
+            "message": cli.RUNTIME_MESSAGE,
+            "cause": "No module named 'pyrewire'",
+        }
+    }
+    # Matched literally: this line sits in a fenced block whose exact shape is
+    # itself the contract, so a reflow there is a documentation defect.
+    assert "error: selector_unavailable # " in doc
+    # Collapse whitespace so a paragraph reflow cannot fail the prose claims.
+    flat = " ".join(doc.split())
+    assert f"exits with `{cli.EXIT_SELECTOR_UNAVAILABLE}`" in flat
+    assert "agent_workflow.skill_plan_failed" in flat
 
 
 def test_cli_reports_selector_failure_in_text_mode(capsys, monkeypatch):
@@ -459,6 +491,38 @@ def test_derive_without_abox_triples_does_not_need_the_wirelog_runtime(monkeypat
     monkeypatch.setitem(sys.modules, "pyrewire", None)
 
     assert derive((), ()) == ()
+
+
+def test_the_plan_is_printed_before_it_is_recorded(capsys, monkeypatch, tmp_path):
+    # _record swallows only OSError and ValueError, so ordering is what
+    # protects the plan from anything else the log writer can raise.
+    def _explode(path, plan, derivations):
+        raise RuntimeError("log writer bug")
+
+    monkeypatch.setattr(cli, "append_decision_record", _explode)
+
+    try:
+        cli.main(
+            ["--property", "trivial", "--decision-log", str(tmp_path / "log.jsonl")]
+        )
+    except RuntimeError:
+        pass
+    else:  # pragma: no cover
+        raise AssertionError("expected the unguarded log failure to propagate")
+
+    assert json.loads(capsys.readouterr().out)["selected"]
+
+
+def test_an_unusable_decision_log_path_warns_instead_of_dropping_the_trace(capsys):
+    # "" raises OSError and a null byte raises ValueError. Both must warn
+    # rather than drop the trace in silence or escape as a traceback.
+    for path in ("", "a\0b"):
+        code = cli.main(["--property", "trivial", "--decision-log", path])
+        captured = capsys.readouterr()
+
+        assert code == 0, path
+        assert json.loads(captured.out)["selected"], path
+        assert "decision log unavailable" in captured.err, path
 
 
 def test_an_unwritable_decision_log_never_suppresses_the_answer(capsys, tmp_path):

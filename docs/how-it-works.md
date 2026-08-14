@@ -89,6 +89,9 @@ selected skills, blocked skills, and rule reasons as durable JSON Lines records.
 A run that produced no plan appends an `agent_workflow.skill_plan_failed` record
 instead, so a failed selection still leaves a durable trace.
 
+The log is a trace, not the answer. An unwritable log path warns on stderr and
+changes neither the exit code nor the document already written to stdout.
+
 The compatibility `implementation-skill` entrypoint remains stable for plugin
 hosts. A host first checks `PATH`, then an executable harness in the current
 workspace's `.venv`, then an active Python environment that can import the
