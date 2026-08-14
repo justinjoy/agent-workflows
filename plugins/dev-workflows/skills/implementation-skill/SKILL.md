@@ -153,6 +153,10 @@ objective, risk classification, tests, review findings, and exact candidate
 instead. The candidate can proceed only when Reviewer, Architect, and Critic
 agree there are no blocking issues.
 
+Each gate returns an explicit `verdict` of `approved` or `blocked`. A `blocked`
+verdict stops the commit gate for that candidate; it never ends the run
+silently. Report the verdict and its reasons through `report-result`.
+
 Any fix invalidates prior test, review, and final validation artifacts. Repeat
 the selected validation, independent review, and final validation gates for the
 changed candidate.
@@ -167,7 +171,10 @@ the approved paths and hunks, verify the staged tree matches
 amending history, and verify the commit tree matches the approved tree.
 
 For multiple atomic units, repeat implementation through commit for each unit.
-Run `report-result` once after all units are committed.
+
+Run `report-result` once on every termination of the run, not only after a
+successful commit. A blocking gate verdict, an unavailable runtime, or an
+abandoned unit still terminates the run and still requires the report.
 
 ## Agent Use and Degraded Mode
 
@@ -192,6 +199,8 @@ Before final response, verify:
 - The final response reports selected atomic skills and rule reasons.
 - Independent Architect and Critic passes ran when selected, or degraded mode
   and its cause were declared.
+- Every gate verdict that ran appears in the final response. Running a gate and
+  omitting its verdict is a silent termination, not a completed run.
 - Critic risks were addressed or explicitly accepted.
 - Implementation was divided into atomic commit-sized changes.
 - Tests or validation were run and reported.
@@ -203,7 +212,11 @@ Before final response, verify:
 
 In the final response, report:
 
-- selected skill plan
+- selected skill plan, plus blocked skills and their rule reasons
+- `implementation_plan` summary and `critique_findings` when those skills were selected
+- `review_findings`
+- `architect_validation` and `critic_validation`, each with its explicit `verdict`
+  and the `approved_candidate_tree` ID it judged
 - every atomic commit hash, subject, committed paths, and approved digest
 - PR URL if opened
 - validation commands and results

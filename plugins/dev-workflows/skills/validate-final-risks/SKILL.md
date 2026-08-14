@@ -13,10 +13,14 @@ exclusion directly.
 
 Output `critic_validation` covering:
 
-- the `approved_candidate_tree` ID being approved
+- an explicit `verdict` of `approved` or `blocked`
+- the `approved_candidate_tree` ID being judged
 - prior objections
 - known failure modes
 - validation evidence
 - unrelated work exclusion
+
+A `blocked` verdict must state its reasons and must be surfaced in
+`report-result`. It stops the commit gate; it never ends the run silently.
 
 Any candidate change invalidates this approval.
