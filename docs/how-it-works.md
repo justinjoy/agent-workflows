@@ -101,12 +101,16 @@ reads `payload["selected"]` fails loudly instead of treating a failure as an
 empty plan. A caller that defaults the key instead, such as
 `payload.get("selected", [])`, defeats that and must branch on the exit code or
 on `error.kind`. Exits `3` and `4` are both distinct from argparse's
-usage-error `2`, which still signals rejected input.
+usage-error `2`, which still signals rejected input. Exit `2` prints no document
+at all: argparse reports the cause on stderr, so a caller that parses only
+stdout must branch on the exit code to see it.
 
 Use `--decision-log path/to/decisions.jsonl` to append the request facts,
 selected skills, blocked skills, and rule reasons as durable JSON Lines records.
-A run that produced no plan appends an `agent_workflow.skill_plan_failed` record
-instead, so a failed selection still leaves a durable trace.
+A run that failed at exit `3` or `4` appends an `agent_workflow.skill_plan_failed`
+record instead, so a failed selection still leaves a durable trace. Input
+rejected at exit `2` is reported by argparse before the log is reachable and
+leaves no record, so an absent record is not evidence that no run was attempted.
 
 The log is a trace, not the answer. An unwritable log path warns on stderr and
 changes neither the exit code nor the document already written to stdout.

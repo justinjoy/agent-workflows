@@ -302,6 +302,25 @@ def test_selector_rule_conflict_is_not_an_input_error():
     assert issubclass(SelectorRuleConflictError, HarnessError)
 
 
+def test_rejected_input_exits_two_with_no_document_and_no_record(capsys, tmp_path):
+    # Exit 2 is the one no-plan exit that prints nothing on stdout, and it never
+    # reaches the decision log. Both are pinned here because the skill contract
+    # used to list exit 2 beside the kinds that do emit a document, which told a
+    # coordinator to parse a document that is never there.
+    log = tmp_path / "decisions.jsonl"
+    try:
+        cli.main(["--property", "unknown_fact", "--decision-log", str(log)])
+    except SystemExit as exc:
+        assert exc.code == 2
+    else:  # pragma: no cover
+        raise AssertionError("expected argparse to reject the unknown fact")
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "unknown_fact" in captured.err
+    assert not log.exists()
+
+
 def test_every_error_kind_has_its_own_exit_code():
     assert set(cli.EXIT_BY_KIND) == set(cli.MESSAGE_BY_KIND)
     codes = list(cli.EXIT_BY_KIND.values())

@@ -67,18 +67,22 @@ On success the command emits a machine-readable JSON plan containing request
 facts, selected skills, blocked skills, and rule reasons, and exits `0`. Add
 `--decision-log path/to/decisions.jsonl` to append a durable selection record.
 
-When it produces no plan it emits an `error` document with a `kind` instead,
-and the remedy differs by kind. Do not read a failure as an empty plan.
+A non-zero exit never prints a plan. Branch on the exit code rather than on the
+shape of stdout, and never read a failure as an empty plan.
 
-- exit `2`: rejected input. Fix the facts and run the selector again.
+- exit `2`: rejected input. Stdout is empty and the cause is on stderr, so a
+  caller reading only stdout sees nothing at all here. Fix the facts and run
+  the selector again.
 - exit `3`, `selector_unavailable`: the Wirelog runtime could not run. Fail
   closed as described below.
 - exit `4`, `rule_conflict`: two rules disagree about the same skill, so no
   plan is deterministic. Do not fail closed to the non-trivial plan and do not
   proceed. Report the conflict through `report-result` and stop.
 
-Every one of these exits terminates the run and still requires `report-result`.
-Producing no plan is never a reason to stop without responding.
+Exits `3` and `4` emit an `error` document carrying a `kind` on stdout; exit
+`2` does not. Every one of these exits terminates the run and still requires
+`report-result`. Producing no plan is never a reason to stop without
+responding.
 
 Skill choice is therefore made by explicit facts and Wirelog rules instead of by
 free-form LLM tool selection.
