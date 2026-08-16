@@ -18,6 +18,13 @@ class SelectorRuleConflictError(HarnessError):
     """Two Wirelog rules disagree about the same skill."""
 
 
+# Invariant these rules must preserve: across one evaluation, a skill code may
+# appear with exactly one (order, reason) in `selected_skill` and one reason in
+# `blocked_skill`. Selecting the same skill for two reasons is ordinary Datalog
+# but makes the plan depend on row order, so `plan_from_rows` rejects it and the
+# run stops. The `selected_skill(60, 6, ...)` pair below is legal only because
+# its `docs_only` guards are mutually exclusive; a second justification added
+# without such a guard turns every matching request into a stopped run.
 RULES = """
 .decl request(req: symbol)
 .decl request_type(req: symbol, typ: symbol)
