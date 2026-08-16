@@ -165,7 +165,9 @@ cross-module code changed.
 ### 7. Reviewer Pass
 
 Every code change, including documentation-only and trivial changes, selects
-`review-diff`. The Reviewer must not have written the change under review. Give
+`review-diff`. The Reviewer must not have written the change under review,
+except under whole-workflow degraded sequential mode, where no second agent
+exists and the weakened separation is declared and reported. Give
 it the raw uncommitted diff, candidate path set and digest, and the objective,
 not the Implementer's account. Every gate must identify the same
 `approved_candidate_tree` created from the base tree with a temporary index.
@@ -239,12 +241,16 @@ synchronous dispatch. Re-sending an identical prompt carries no new
 information, so degrade instead.
 
 If the re-dispatch also delivers nothing, degrade that role alone and keep
-every other role independent. While other agents can still be reached, no
-single agent may hold both sides of a gate pair -- Architect and Critic,
-Implementer and Reviewer, or Implementer and final validation -- so re-dispatch
-to a different agent rather than absorbing the role. If independent agents are
-unavailable in the host at all, that pairing rule cannot apply and the whole
-remaining workflow drops to degraded sequential mode instead. Preserve and use
+every other role independent. Degrading a role means the coordinator runs that
+skill itself against the same inputs. It must not do that while it already
+holds the other side of the role's gate pair -- Architect and Critic,
+Implementer and Reviewer, or Implementer and final validation. When it does
+hold that other side and no further agent can be reached for the role, stop the
+run as blocked and report it through `report-result` rather than perform a
+self-review. If independent agents are unavailable in the host at all, there is
+no separation left to protect and the whole remaining workflow drops to
+degraded sequential mode instead, where the coordinator does run every gate and
+declares it. Preserve and use
 every successfully returned raw artifact; if a lost one arrives after the gate
 ran, use what was held at gate time and report the duplicate.
 
@@ -289,6 +295,9 @@ In the final response, report:
 - PR URL if opened
 - validation commands and results
 - remaining untracked/unrelated files, if any
+- which agent produced each gate artifact, or `coordinator, degraded` when the
+  coordinator produced it, so a gate that never ran independently cannot be
+  reported as one that did
 - every role dispatch that delivered no artifact, what changed on any
   re-dispatch, and which roles ran degraded as a result
 - whether degraded sequential mode covered the whole run, and every

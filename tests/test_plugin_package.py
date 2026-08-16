@@ -226,8 +226,12 @@ def _section(document: str, heading: str) -> str:
     """
 
     level = heading.split(" ", 1)[0]
-    start = document.index(heading) + len(heading)
-    rest = document[start:]
+    at = document.find(heading)
+    if at == -1:
+        # Return empty rather than raising, so the caller's assertion message
+        # about the missing heading is the one that actually fires.
+        return ""
+    rest = document[at + len(heading) :]
     stops = [
         found
         for depth in range(1, len(level) + 1)
@@ -276,7 +280,14 @@ def test_the_contract_requires_confirmed_delivery_of_every_role_artifact():
         agent_use
     )
     assert "degrade that role alone and keep every other role independent" in agent_use
-    assert "no single agent may hold both sides of a gate pair" in agent_use
+    # Degrading a role must name an action. Left undefined, the only reading
+    # that is an action is absorbing the role, which is what the pairing rule
+    # forbids -- the contract would say do X and not-X in one breath, and an
+    # agent would take the convenient branch and self-review.
+    assert "Degrading a role means the coordinator runs that skill itself" in agent_use
+    assert "must not do that while it already holds the other side" in agent_use
+    # The exit that keeps that from being a deadlock.
+    assert "stop the run as blocked and report it through `report-result`" in agent_use
     # The substance floor: an artifact that echoes nothing it judged is not
     # evidence, so requiring delivery cannot be satisfied by a rubber stamp.
     assert "echoes the identifiers its skill requires" in agent_use
@@ -289,10 +300,14 @@ def test_the_contract_requires_confirmed_delivery_of_every_role_artifact():
         assert section, heading
         assert SKILL_BY_ID[skill_id].output in section, (heading, skill_id)
 
-    # Detecting a lost dispatch is worthless if the user is never told.
+    # Detecting a lost dispatch is worthless if the user is never told, and a
+    # report with no producer per artifact reads identically whether the gate
+    # ran independently or the coordinator quietly wrote it.
     for document in (implementation, report):
         assert "every role dispatch that delivered no artifact" in document
         assert "which roles ran degraded as a result" in document
+        assert "which agent produced each gate artifact" in document
+        assert "`coordinator, degraded`" in document
 
     # Portability: the mechanism is one host's, the contract is four hosts'.
     shipped = list((ROOT / "plugins").rglob("SKILL.md"))
