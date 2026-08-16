@@ -14,3 +14,8 @@ The plan should identify:
 - data model, migration, or compatibility concerns
 - test strategy and edge cases
 - atomic implementation units
+
+When a coordinator dispatched this skill, producing `implementation_plan` is not
+delivering it: return it the way that dispatch named. A pass that ends without
+the coordinator holding it is a failed dispatch and its work is lost. Under
+direct invocation the caller is the coordinator and delivery is immediate.

@@ -17,3 +17,8 @@ ID, approved candidate path set, and content digest reviewed.
 For documentation, also verify technical accuracy, commands, internal links,
 and consistency with the actual selector output. Any candidate change
 invalidates the review and requires a new independent review.
+
+When a coordinator dispatched this skill, producing `review_findings` is not
+delivering it: return it the way that dispatch named. A pass that ends without
+the coordinator holding it is a failed dispatch and its work is lost. Under
+direct invocation the caller is the coordinator and delivery is immediate.

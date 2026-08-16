@@ -283,6 +283,27 @@ def test_the_contract_requires_confirmed_delivery_of_every_role_artifact():
             assert token not in text, f"{path.name} names a host mechanism: {token}"
 
 
+def test_every_dispatched_role_skill_states_that_producing_is_not_delivering():
+    # Agent Use binds the coordinator, which is the side that did not fail. A
+    # dispatched role reads only its own atomic skill, and these skills are also
+    # invocable directly, so the clause is conditioned on being dispatched
+    # rather than asserting a coordinator always exists. Derived from the
+    # registry so adding a dispatched role without the clause fails here.
+    skill_root = ROOT / "plugins" / "dev-workflows" / "skills"
+
+    for skill_id in DISPATCHED_ROLE_SKILLS:
+        contract = _flat((skill_root / skill_id / "SKILL.md").read_text(encoding="utf-8"))
+        artifact = SKILL_BY_ID[skill_id].output
+        assert (
+            f"When a coordinator dispatched this skill, producing `{artifact}` is "
+            "not delivering it" in contract
+        ), skill_id
+        assert "is a failed dispatch and its work is lost" in contract, skill_id
+        # Without this the clause is wrong under direct invocation, where the
+        # caller is the coordinator and there is nothing to return to.
+        assert "Under direct invocation the caller is the coordinator" in contract, skill_id
+
+
 def test_the_contract_never_promises_a_document_for_rejected_input():
     # exit 2 comes from argparse and prints nothing on stdout. Listing it under
     # a sentence that promised an `error` document told coordinators to parse a
