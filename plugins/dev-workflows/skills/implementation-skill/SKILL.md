@@ -204,7 +204,8 @@ amending history, and verify the commit tree matches the approved tree.
 For multiple atomic units, repeat implementation through commit for each unit.
 
 Run `report-result` once on every termination of the run, not only after a
-successful commit. A blocking gate verdict, an unavailable runtime, a rule
+successful commit. A blocking gate verdict, a host that can provide no
+independent agent to hold the judgment gates, an unavailable runtime, a rule
 conflict, a harness defect, or an abandoned unit still terminates the run and
 still requires the report.
 
@@ -270,10 +271,21 @@ citation attached to an `approved` verdict is terminal: nothing downstream
 re-checks it. Require identifiers a role already holds; do not require a gate
 to produce new evidence it would be tempted to fabricate.
 
-Artifacts do not come back the same way in every host. Identify how a
-dispatched role's output actually reaches the coordinator before the first
-dispatch, and name it in every dispatch prompt together with the artifact the
-role must return.
+Artifacts do not come back the same way in every host, and hosts differ in how
+many independent agents they can provide. Identify how a dispatched role's
+output actually reaches the coordinator, and how many independent agents the
+host can provide, before the first dispatch, and name the return path in every
+dispatch prompt together with the artifact the role must return.
+
+A run needs one independent agent to hold the judgment gates the selected plan
+requires, and enough to separate that plan's final validations to keep every
+guarantee -- one and two respectively for every plan the selector accepts
+today, and for the fail-closed non-trivial plan when the runtime could not run.
+With none, stop the run as blocked before editing and report it through
+`report-result`, naming the count the host offered. With one, run in
+`single-judge mode`. Establishing the count before the first dispatch is the
+point: the same stop found one lost role at a time arrives after the work it
+invalidates.
 
 A role that ends, goes idle, or reports itself available without the
 coordinator holding its artifact is a failed dispatch, not a completed pass.
@@ -313,6 +325,8 @@ Before final response, verify:
 - The Wirelog selector ran and emitted a plan, or runtime unavailability was
   declared with the fail-closed plan, or a rule conflict was reported and the
   run stopped without editing.
+- The independent-agent count was established before the first dispatch, and a
+  host that could provide none stopped the run before editing.
 - The final response reports selected atomic skills and rule reasons.
 - Independent Architect and Critic passes ran when selected, or `single-judge
   mode` or a degraded role was declared with its cause.
@@ -348,5 +362,7 @@ In the final response, report:
   reported as one that did
 - every role dispatch that delivered no artifact, what changed on any
   re-dispatch, and which roles ran degraded as a result
+- when the run stopped before its first dispatch, the independent-agent count
+  the host offered and the judgment gates it could not place
 - whether the run ran in `single-judge mode`, and every independence guarantee
   that weakened

@@ -262,9 +262,10 @@ Independence is only real if the role's output arrives. A dispatched role can
 finish its work and still deliver nothing, because hosts differ in how a
 subagent's output reaches its coordinator: some return it directly, some expect
 the role to send it back explicitly, and some expect an agreed file. The
-coordinator determines which applies before the first dispatch, names it in
-every dispatch prompt, and confirms it holds the named artifact before treating
-the pass as complete. A role that finished or went idle without delivering is
+coordinator determines which applies, and how many independent agents the host
+can provide, before the first dispatch; names the return path in every dispatch
+prompt; and confirms it holds the named artifact before treating the pass as
+complete. A role that finished or went idle without delivering is
 treated as a failed dispatch, not a completed pass.
 
 The skill deliberately describes this as an obligation rather than naming a
@@ -286,6 +287,22 @@ degrade to, so one that cannot reach an independent agent stops the run as
 blocked instead. With no independent agent at all, every judgment gate would
 fall to the author of the change, so the run stops as blocked before editing
 rather than approving its own work.
+
+With exactly one independent agent the run continues in single-judge mode: that
+agent holds every judgment gate, so it judges both design and risk at final
+validation. Planning still separates, with the coordinator authoring the plan
+and the agent critiquing it, because the critique is the only pass that ever
+interrogates the plan's quality. The mode surrenders four guarantees and the
+report names all four -- one mind behind both verdicts, risks validated against
+a critique it wrote, both validations reading review findings it wrote, and a
+design that was independently critiqued but not independently authored.
+
+The consequence worth stating plainly: a host that can dispatch no independent
+agent can no longer reach a commit through this harness. It still runs, and it
+still reports -- as a blocked stop naming the count it could offer. That is
+deliberate. One agent writing, reviewing and approving its own change satisfied
+the gates only nominally, and a report of three approvals from one mind is the
+assurance-that-isn't-there this workflow exists to refuse.
 
 The final report must name every dispatch that delivered nothing, every role
 that ran degraded, and which independence guarantees were weakened.

@@ -8,9 +8,10 @@ description: Atomic implementation skill that reports selected skills, validatio
 Produce the final response for the implementation run.
 
 Run this skill on every termination of the run, not only after a successful
-commit. A gate rejection, a blocked commit, an unavailable runtime, a rule
-conflict, a harness defect, or an abandoned unit each still terminates the run
-and still requires this report. A run must never end without one.
+commit. A gate rejection, a host that can provide no independent agent to hold
+the judgment gates, a blocked commit, an unavailable runtime, a rule conflict, a
+harness defect, or an abandoned unit each still terminates the run and still
+requires this report. A run must never end without one.
 
 Report:
 
@@ -30,6 +31,8 @@ Report:
   reported as one that did
 - every role dispatch that delivered no artifact, what changed on any
   re-dispatch, and which roles ran degraded as a result
+- when the run stopped before its first dispatch, the independent-agent count
+  the host offered and the judgment gates it could not place
 - whether the run ran in `single-judge mode`, and every independence guarantee
   that weakened
 - residual risks or unavailable validation

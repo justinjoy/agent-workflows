@@ -539,6 +539,55 @@ def test_no_agent_judges_an_artifact_it_produced():
         assert surrender in agent_use, surrender
 
 
+def test_the_contract_establishes_agent_capacity_before_the_first_dispatch():
+    # Knowing the count up front is what turns a derivable dead end into a stop
+    # before the work exists. Staleness tripwire, as above.
+    skill_root = ROOT / "plugins" / "dev-workflows" / "skills"
+    raw = (skill_root / "implementation-skill" / "SKILL.md").read_text(encoding="utf-8")
+    implementation = _flat(raw)
+    report = _flat((skill_root / "report-result" / "SKILL.md").read_text(encoding="utf-8"))
+    agent_use = _section(raw, "## Agent Use and Degraded Mode")
+    assert agent_use, "the contract no longer has an Agent Use and Degraded Mode section"
+
+    # Bound into the existing pre-dispatch sentence as one string. `before the
+    # first dispatch` already occurred on its own before this change, so a bare
+    # assertion on it would have been green against the unmodified contract.
+    assert (
+        "Identify how a dispatched role's output actually reaches the coordinator, "
+        "and how many independent agents the host can provide, before the first "
+        "dispatch" in agent_use
+    )
+    # The rule has to read before the number, or the number can be edited and
+    # stay internally consistent with a contract that no longer means it.
+    requirement = "one independent agent to hold the judgment gates the selected plan requires"
+    assert requirement in agent_use
+    assert agent_use.index(requirement) < agent_use.index("one and two respectively")
+    # The fail-closed path selects every gate, so it is the strictest case here,
+    # not an exemption from it.
+    assert "the fail-closed non-trivial plan when the runtime could not run" in agent_use
+    assert "stop the run as blocked before editing" in agent_use
+
+    # A capacity stop yields no gate verdict, so report-result's closing
+    # paragraph -- conditioned on one -- never catches it. It has to be a listed
+    # termination and a named report item, in both documents or it ships in one.
+    for name, document in (("implementation", implementation), ("report", report)):
+        listed = re.search(
+            r"not only after a successful commit\. (.*?) (?:each )?still terminates the run",
+            document,
+        )
+        assert listed, f"{name} no longer lists the terminations that require a report"
+        assert "no independent agent to hold the judgment gates" in listed.group(1), name
+        assert (
+            "the independent-agent count the host offered and the judgment gates it "
+            "could not place" in document
+        ), name
+
+    doc = _flat((ROOT / "docs" / "how-it-works.md").read_text(encoding="utf-8"))
+    assert "how many independent agents the host can provide, before the first dispatch" in doc
+    # Accurate cost: such a host still runs and still reports. It cannot commit.
+    assert "can no longer reach a commit through this harness" in doc
+
+
 def test_whole_workflow_degradation_is_retired_from_every_shipped_contract():
     # The coordinator running every gate on its own change produced approvals
     # nobody independent had given. Retiring it is only real if no shipped
