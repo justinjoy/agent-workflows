@@ -254,9 +254,9 @@ The coordinating agent sequences those passes, resolves disagreements, and repor
 
 The workflow depends on separation between roles:
 
-- Architect and Critic should be independent so the critique is not just a confirmation of the plan.
-- Implementer and Reviewer should be independent so the reviewer is not checking its own work.
-- Final Architect and Critic validation confirms that the finished diff still matches the original goal and that accepted risks are deliberate.
+- The plan's author never critiques it, so the critique is not a confirmation of the plan. This one never bends.
+- The Implementer never reviews or validates its own candidate, which is why a host with no independent agent cannot reach a commit. This one never bends either.
+- Design and risk validation are argued by different agents wherever an assignment allows it. This is the one separation a run may lose, and only where no assignment preserves it — in `single-judge mode` it is lost at final validation, and the report says so.
 
 Independence is only real if the role's output arrives. A dispatched role can
 finish its work and still deliver nothing, because hosts differ in how a

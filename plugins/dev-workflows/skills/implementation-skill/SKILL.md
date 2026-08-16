@@ -140,8 +140,12 @@ authorship instead would leave that agent critiquing its own plan.
 ### 4. Critic Pass
 
 Run this pass only when the selected skill plan includes `critique-plan`.
-Before implementation, have the Critic challenge the Architect plan. Resolve
-Critic objections before implementation. Dispatch it under Agent Use and
+Before implementation, have the Critic challenge the plan, whoever wrote it.
+Resolve Critic objections before implementation. This pass never goes to the
+agent that produced the plan, and in `single-judge mode` it is the one pass the
+single agent holds that the coordinator could otherwise have taken -- it is
+what interrogates the plan's quality, so it is the one that must stay
+independent. Dispatch it under Agent Use and
 Degraded Mode: the pass is not complete until the coordinator holds
 `critique_findings`.
 

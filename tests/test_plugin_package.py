@@ -557,6 +557,45 @@ def test_no_agent_judges_an_artifact_it_produced():
         assert hedge not in agent_use.lower(), hedge
 
 
+def test_the_planning_passes_do_not_contradict_single_judge_mode():
+    # One policy written in three places, with the older writings left behind,
+    # is the defect this whole issue was opened on. The Agent Use section says
+    # the coordinator authors the plan in single-judge mode; the two planning
+    # passes and the docs must not still describe the assignment it reverses.
+    #
+    # Staleness tripwire: proves the three writings agree, not that a
+    # coordinator follows any of them.
+    skill_root = ROOT / "plugins" / "dev-workflows" / "skills"
+    raw = (skill_root / "implementation-skill" / "SKILL.md").read_text(encoding="utf-8")
+
+    architect = _section(raw, "### 3. Architect Pass")
+    critic = _section(raw, "### 4. Critic Pass")
+    assert architect and critic, "the planning passes were renamed or removed"
+
+    # The Architect Pass still opens by asking for an independent agent, which
+    # is right for two or more. It must name the case that reverses it.
+    assert "In `single-judge mode` the coordinator writes the plan itself" in architect
+    # The Critic Pass must not assume an Architect agent wrote the plan, and
+    # must say why it is the pass that stays independent.
+    assert "challenge the plan, whoever wrote it" in critic
+    assert "never goes to the agent that produced the plan" in critic
+    assert "the Architect plan" not in critic, (
+        "the Critic Pass still assumes an Architect agent authored the plan"
+    )
+
+    # The docs state the same three separations. The first two are absolute and
+    # must not be written as preferences beside an absolute rule.
+    doc = _flat((ROOT / "docs" / "how-it-works.md").read_text(encoding="utf-8"))
+    assert "The plan's author never critiques it" in doc
+    assert "The Implementer never reviews or validates its own candidate" in doc
+    assert "This is the one separation a run may lose" in doc
+    for stale in (
+        "Architect and Critic should be independent",
+        "Implementer and Reviewer should be independent",
+    ):
+        assert stale not in doc, stale
+
+
 def test_the_contract_establishes_agent_capacity_before_the_first_dispatch():
     # Knowing the count up front is what turns a derivable dead end into a stop
     # before the work exists. Staleness tripwire, as above.
