@@ -471,7 +471,13 @@ def test_the_rejection_hint_names_the_tbox_that_did_the_rejecting(tmp_path: Path
     for flag, bad in (("--touches", "session_module"), ("--scope", "one_line")):
         rejected = _run_cli("--ontology", str(path), flag, bad)
         assert rejected.returncode == 2, flag
-        assert str(path) in rejected.stderr, flag
+        # Against the hint, for the same reason as below: a TBox that failed to
+        # load also exits 2 and names the path, so asserting on the whole
+        # stream would hold with no hint involved at all -- the fixture
+        # loading, rather than the assertion, would be doing the work.
+        rejected_hint = rejected.stderr.strip().splitlines()[-1].split("; ")[-1]
+        assert str(path) in rejected_hint, flag
+        assert "--print-ontology" in rejected_hint, flag
 
     result = _run_cli("--ontology", str(path), "--touches", "session_module")
 
