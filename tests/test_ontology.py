@@ -356,3 +356,15 @@ def test_printed_ontology_text_mode_carries_the_whole_tbox():
         for relation, rows in expected.items()
         if rows
     }
+def test_a_rejected_fact_points_at_the_flag_that_lists_the_vocabulary():
+    # The caller is reading stderr at this moment, not --help, and the message
+    # named the relation to declare in but never the values it accepts. Both
+    # vocabulary errors are covered, which is what keeps visible the fact that
+    # the hint decorates every ValueError derive() raises.
+    for flag, bad in (("--touches", "nonexistent_module"), ("--scope", "nonexistent_scope")):
+        result = _run_cli(flag, bad)
+
+        assert result.returncode == 2, (flag, result.stdout)
+        assert result.stdout == ""
+        assert bad in result.stderr, flag
+        assert "--print-ontology" in result.stderr, flag
