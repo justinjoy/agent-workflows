@@ -216,13 +216,34 @@ HOST_MECHANISM_TOKENS = ("SendMessage", "subagent_type", 'to: "main"')
 
 
 def _section(document: str, heading: str) -> str:
-    """The flattened text of one section, up to the next heading of its level."""
+    """The flattened text of one section, up to the next heading of its level or above.
+
+    Stopping only at the same level makes the last section of its depth swallow
+    everything after it, so an assertion scoped to that section would pass on
+    text living somewhere else entirely -- the whole-file check this helper
+    exists to replace. A deeper heading does not end the section: a subsection
+    belongs to its parent.
+    """
 
     level = heading.split(" ", 1)[0]
     start = document.index(heading) + len(heading)
     rest = document[start:]
-    end = rest.find(f"\n{level} ")
-    return _flat(rest if end == -1 else rest[:end])
+    stops = [
+        found
+        for depth in range(1, len(level) + 1)
+        if (found := rest.find(f"\n{'#' * depth} ")) != -1
+    ]
+    return _flat(rest[: min(stops)] if stops else rest)
+
+
+def test_section_slicing_stops_at_the_next_heading_of_the_same_level_or_above():
+    document = "## A\nalpha\n### A1\nbeta\n## B\ngamma\n"
+
+    # A subsection belongs to its parent.
+    assert _section(document, "## A") == "alpha ### A1 beta"
+    # A trailing subsection must not swallow what follows its parent.
+    assert _section(document, "### A1") == "beta"
+    assert _section(document, "## B") == "gamma"
 
 
 def test_the_contract_requires_confirmed_delivery_of_every_role_artifact():
