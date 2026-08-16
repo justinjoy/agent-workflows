@@ -14,6 +14,7 @@ from agent_workflows_harness.models import RequestFacts
 from agent_workflows_harness.ontology import (
     DEFAULT_ONTOLOGY,
     Ontology,
+    _TERM_PATTERN,
     derive,
     derived_properties,
     load_ontology,
@@ -243,6 +244,10 @@ def test_cli_prints_the_active_ontology_as_a_loadable_document():
     payload = json.loads(result.stdout)
     assert Ontology.from_dict(payload) == DEFAULT_ONTOLOGY
     assert set(payload) == set(DEFAULT_ONTOLOGY.to_dict())
+    # Round-trip equality is whitespace- and order-blind, so the shape the docs
+    # show is pinned separately: dropping indent or sort_keys would leave the
+    # example diverged from the real output with every assertion still green.
+    assert result.stdout == json.dumps(payload, indent=2, sort_keys=True) + "\n"
     # A successful run that selects nothing, so a caller reading `selected`
     # fails loudly instead of reading a TBox as an empty plan.
     assert "selected" not in payload and "blocked" not in payload
@@ -327,7 +332,10 @@ def test_docs_show_a_printable_ontology_document_that_is_not_stale():
     shown_rows = 0
     # Anchor on line starts: an unanchored fence pattern begins matching at a
     # *closing* fence and yields empty blocks.
-    for tag, block in re.findall(r"^```([a-z]*)\n(.*?)^```", doc, re.DOTALL | re.MULTILINE):
+    # `[^\n]*`, not `[a-z]*`: a tag the class cannot match makes the engine skip
+    # that opener and start at the fence's *closing* delimiter, which is the
+    # pairing break this scan already had twice, relocated into the tag class.
+    for tag, block in re.findall(r"^```([^\n]*)\n(.*?)^```", doc, re.DOTALL | re.MULTILINE):
         # Only untagged fences: the renderer's output is untagged, and a JSON
         # fence contains `"path": "a -> b"` lines that would otherwise be read
         # as rows. Untagged fences that are not rows (the text-mode error
@@ -342,7 +350,10 @@ def test_docs_show_a_printable_ontology_document_that_is_not_stale():
             # Resolve every `x: y -> z` line rather than skipping unknown
             # relations: skipping would let a mistyped relation name drop out
             # of the count in silence.
-            assert relation in expected, line
+            assert relation in expected, (
+                f"{line!r} parses as a TBox row but names no relation; "
+                "tag the fence if it is not one"
+            )
             assert (left, right) in {tuple(row) for row in expected[relation]}, line
             shown_rows += 1
     assert shown_rows, "the docs no longer show a text-rendered ontology example"
@@ -378,6 +389,13 @@ def test_printed_ontology_text_mode_carries_the_whole_tbox():
     order = [line.partition(": ")[0] for line in lines]
     assert order == sorted(order)
 
+    # The format's unambiguity rests on terms never containing a space, a
+    # colon, or '>'. That coupling lives in a comment and in the docs; widening
+    # _TERM_PATTERN would make the shipped output unparseable and the claim
+    # false while every assertion above still passed.
+    for hostile in ("a b", "a:b", "a->b", "a>b"):
+        assert not _TERM_PATTERN.fullmatch(hostile), hostile
+
     rebuilt: dict[str, set[tuple[str, str]]] = {}
     for line in lines:
         relation, sep, rest = line.partition(": ")
@@ -404,7 +422,10 @@ def test_a_rejected_fact_points_at_the_flag_that_lists_the_vocabulary():
         assert result.returncode == 2, (flag, result.stdout)
         assert result.stdout == ""
         assert bad in result.stderr, flag
-        assert "--print-ontology" in result.stderr, flag
+        # The whole hint, not the flag name: argparse prints a usage line that
+        # already contains `[--print-ontology]` because the flag exists, so
+        # asserting the name alone stays green with the hint deleted entirely.
+        assert "run --print-ontology to list the declared vocabulary" in result.stderr, flag
 
 
 def test_the_documented_composition_rule_matches_what_the_flag_actually_does():
@@ -435,7 +456,13 @@ def test_the_documented_composition_rule_matches_what_the_flag_actually_does():
         if other.dest in {"help", "print_ontology"}:
             continue
         name = other.option_strings[0] if other.option_strings else "request text"
-        assert name in own_help, f"{name} is neither honoured nor ignored"
+        # Boundary-aware: a plain substring test passes vacuously for any name
+        # contained in a longer one, so a short alias like `-o` would be
+        # "found" inside `--ontology`. \b is not enough -- a trailing hyphen is
+        # itself a word boundary, so `--decision` would match `--decision-log`.
+        assert re.search(re.escape(name) + r"(?![\w-])", own_help), (
+            f"{name} is neither honoured nor ignored"
+        )
 
     doc = " ".join((ROOT / "docs" / "how-it-works.md").read_text(encoding="utf-8").split())
     assert "`--ontology` and `--text` still apply" in doc

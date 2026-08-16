@@ -909,7 +909,7 @@ def test_every_flag_the_documents_name_is_a_flag_the_cli_accepts():
         # in the one file this exists to read.
         flags = re.findall(r"`(--[a-z][a-z-]*)`", text)
         flags += re.findall(r"(?<![`\w-])(--[a-z][a-z-]*)", "\n".join(
-            re.findall(r"^```[a-z]*\n(.*?)^```", text, re.DOTALL | re.MULTILINE)
+            re.findall(r"^```[^\n]*\n(.*?)^```", text, re.DOTALL | re.MULTILINE)
         ))
         for flag in flags:
             seen.add(flag)
