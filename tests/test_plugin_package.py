@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 import tarfile
@@ -19,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TERMINATION_PHRASE_BY_KIND = {
     "selector_unavailable": "an unavailable runtime",
     "rule_conflict": "a rule conflict",
+    "harness_error": "a harness defect",
 }
 EXPECTED_ATOMIC_SKILLS = {
     "classify-change-risk",
@@ -189,16 +191,24 @@ def test_the_contract_never_promises_a_document_for_rejected_input():
     doc = _flat((ROOT / "docs" / "how-it-works.md").read_text(encoding="utf-8"))
 
     assert "Stdout is empty and the cause is on stderr" in implementation
-    assert (
-        f"Exits `{cli.EXIT_SELECTOR_UNAVAILABLE}` and `{cli.EXIT_RULE_CONFLICT}` "
-        "emit an `error` document carrying a `kind` on stdout; exit `2` does not."
-    ) in implementation
+
+    # Derive the document-emitting exits from the kind table rather than
+    # listing them, so adding a kind cannot leave this sentence stale.
+    sentence = re.search(
+        r"Exits ([^.]*?) emit an `error` document carrying a `kind` on stdout; "
+        r"exit `2` does not\.",
+        implementation,
+    )
+    assert sentence, "the contract no longer says which exits carry a document"
+    for code in sorted(cli.EXIT_BY_KIND.values()):
+        assert f"`{code}`" in sentence.group(1), code
+
     assert "Exit `2` prints no document at all" in doc
     # The durable-trace claim must not cover the exit that cannot reach the log.
-    assert (
-        f"A run that failed at exit `{cli.EXIT_SELECTOR_UNAVAILABLE}` or "
-        f"`{cli.EXIT_RULE_CONFLICT}` appends an" in doc
-    )
+    trace = re.search(r"A run that failed at exit ([^.]*?) appends an", doc)
+    assert trace, "the docs no longer scope the durable-trace claim"
+    for code in sorted(cli.EXIT_BY_KIND.values()):
+        assert f"`{code}`" in trace.group(1), code
 
 
 def test_provider_versions_follow_release_policy():

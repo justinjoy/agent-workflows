@@ -96,6 +96,22 @@ environment, so it is never reported as an unavailable runtime:
 }
 ```
 
+Any other harness defect reaching the caller uses exit `5`. The kind tables are
+keyed by kind, so they cannot notice a `HarnessError` subclass added without an
+entry in `KIND_BY_EXCEPTION`; such a subclass would otherwise arrive as
+`selector_unavailable` and send an operator to check `WIRELOG_LIB` for a bug in
+the harness. Exit `5` is what an unclassified harness failure gets instead:
+
+```json
+{
+  "error": {
+    "kind": "harness_error",
+    "message": "The harness failed before producing a plan. This is a defect in the harness itself, not in the request or the environment.",
+    "cause": "SelectorTimeoutError: rule evaluation exceeded its deadline"
+  }
+}
+```
+
 An error document deliberately carries no `selected` key, so a caller that
 reads `payload["selected"]` fails loudly instead of treating a failure as an
 empty plan. A caller that defaults the key instead, such as
@@ -107,8 +123,9 @@ stdout must branch on the exit code to see it.
 
 Use `--decision-log path/to/decisions.jsonl` to append the request facts,
 selected skills, blocked skills, and rule reasons as durable JSON Lines records.
-A run that failed at exit `3` or `4` appends an `agent_workflow.skill_plan_failed`
-record instead, so a failed selection still leaves a durable trace. Input
+A run that failed at exit `3`, `4`, or `5` appends an
+`agent_workflow.skill_plan_failed` record instead, so a failed selection still
+leaves a durable trace. Input
 rejected at exit `2` is reported by argparse before the log is reachable and
 leaves no record, so an absent record is not evidence that no run was attempted.
 
