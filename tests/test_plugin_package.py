@@ -902,9 +902,14 @@ def test_every_flag_the_documents_name_is_a_flag_the_cli_accepts():
         # Inline-backticked flags and flags inside fenced examples both count.
         # The runnable command a reader copies lives in a fence, so scanning
         # only inline text would let a typo there ship green.
+        # Anchor on line starts and accept any language tag. An unanchored
+        # pattern begins matching at a *closing* fence, and a restricted
+        # alternation skips ```json openers and re-breaks the pairing the same
+        # way -- either form silently captured prose and found no flags at all
+        # in the one file this exists to read.
         flags = re.findall(r"`(--[a-z][a-z-]*)`", text)
         flags += re.findall(r"(?<![`\w-])(--[a-z][a-z-]*)", "\n".join(
-            re.findall(r"```(?:bash|text)?\n(.*?)\n```", text, re.DOTALL)
+            re.findall(r"^```[a-z]*\n(.*?)^```", text, re.DOTALL | re.MULTILINE)
         ))
         for flag in flags:
             seen.add(flag)
