@@ -897,6 +897,7 @@ def test_every_flag_the_documents_name_is_a_flag_the_cli_accepts():
         ROOT / "plugins" / "dev-workflows" / "skills" / "implementation-skill" / "SKILL.md",
     ]
     seen = set()
+    from_fences: set[str] = set()
     for path in sources:
         text = path.read_text(encoding="utf-8")
         # Inline-backticked flags and flags inside fenced examples both count.
@@ -908,13 +909,19 @@ def test_every_flag_the_documents_name_is_a_flag_the_cli_accepts():
         # way -- either form silently captured prose and found no flags at all
         # in the one file this exists to read.
         flags = re.findall(r"`(--[a-z][a-z-]*)`", text)
-        flags += re.findall(r"(?<![`\w-])(--[a-z][a-z-]*)", "\n".join(
+        fenced = re.findall(r"(?<![`\w-])(--[a-z][a-z-]*)", "\n".join(
             re.findall(r"^```[^\n]*\n(.*?)^```", text, re.DOTALL | re.MULTILINE)
         ))
+        from_fences.update(fenced)
+        flags += fenced
         for flag in flags:
             seen.add(flag)
             assert flag in known, f"{path.name} names {flag}, which the CLI does not accept"
     assert "--print-ontology" in seen, "no document tells a caller the vocabulary is printable"
+    # Guard the derived set. `seen` is satisfied by inline mentions alone, so a
+    # fence scan that captured nothing -- which is how this half shipped broken
+    # twice -- would leave the whole loop green.
+    assert "--print-ontology" in from_fences, "the fenced examples contributed no flags"
 
 
 def test_the_contract_routes_a_rejected_fact_at_the_printable_vocabulary():

@@ -208,7 +208,13 @@ def main(argv: list[str] | None = None) -> int:
         # exactly the two vocabulary errors in ontology.derive(); a third kind
         # would silently acquire a remedy that does not fit, so check here
         # before adding one.
-        parser.error(f"{exc}; run --print-ontology to list the declared vocabulary")
+        # Carry --ontology through: without it the hint sends a caller whose
+        # custom TBox rejected them to read the bundled default, which is
+        # worse than no hint because it looks authoritative.
+        printer = "--print-ontology"
+        if args.ontology:
+            printer = f"--ontology {args.ontology} --print-ontology"
+        parser.error(f"{exc}; run {printer} to list the declared vocabulary")
     except Exception as exc:
         # Loading libwirelog fails here before the selector is ever reached.
         # Routing it to parser.error would exit 2 with empty stdout, which a
