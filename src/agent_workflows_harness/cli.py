@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import shlex
 import sys
 
 from .facts import classify_request
@@ -51,6 +50,12 @@ KIND_BY_EXCEPTION = {
 }
 
 
+# The invariant halves of the vocabulary hint. Shared because they are the same
+# sentence in both branches; the variable middle -- which flags, in which order
+# -- stays asserted literally per branch, so a test cannot agree with the code
+# by construction.
+HINT_PREFIX = "run "
+HINT_SUFFIX = " to list the declared vocabulary"
 # Characters a path can carry unquoted in every shell a caller might paste
 # into. A backslash is deliberately absent: bare, POSIX shells consume it, so
 # a Windows path is always quoted even when it looks harmless.
@@ -62,12 +67,16 @@ _BARE_PATH = frozenset(
 def _quote_path(path: str) -> str:
     """Quote a path so the emitted hint runs in sh, PowerShell, and cmd alike.
 
-    Double quotes rather than `shlex.quote`: measured against all three, the
-    POSIX single-quote form is literal in cmd and mis-escapes an apostrophe in
-    PowerShell, which doubles embedded quotes instead. Double quotes are
-    honoured by all three and leave backslashes literal in each. The cost is
-    that `$` and a backtick stay live under POSIX, which a filesystem path
-    should not be carrying.
+    Double quotes rather than the POSIX single-quote form: measured against all
+    three, single quotes are literal text in cmd and mis-escape an apostrophe in
+    PowerShell, which doubles an embedded quote instead. Double quotes are
+    honoured by all three and leave backslashes literal in each.
+
+    The residual cost is variable expansion inside double quotes, and it is not
+    POSIX-only: sh and PowerShell both expand `$`, and cmd expands `%VAR%`. A
+    path like `C:\\$Recycle.Bin` exists on every Windows machine. Double quotes
+    still dominate, because the alternative is broken for ordinary paths rather
+    than exotic ones.
     """
 
     if path and all(character in _BARE_PATH for character in path):
@@ -238,8 +247,13 @@ def main(argv: list[str] | None = None) -> int:
         # worse than no hint because it looks authoritative.
         printer = "--print-ontology"
         if args.ontology:
-            printer = f"--ontology {_quote_path(args.ontology)} --print-ontology"
-        parser.error(f"{exc}; run {printer} to list the declared vocabulary")
+            # `--ontology=<path>`, not a separate argument: a path beginning
+            # with `-` is a legal filename that argparse would read as another
+            # option, and no amount of quoting fixes that because the shell is
+            # not what breaks. The `=` form is unambiguous and all three shells
+            # pass it through.
+            printer = f"--ontology={_quote_path(args.ontology)} --print-ontology"
+        parser.error(f"{exc}; {HINT_PREFIX}{printer}{HINT_SUFFIX}")
     except Exception as exc:
         # Loading libwirelog fails here before the selector is ever reached.
         # Routing it to parser.error would exit 2 with empty stdout, which a

@@ -297,6 +297,9 @@ def test_printing_the_ontology_ignores_the_rest_of_the_request(tmp_path: Path):
         "refactor auth workflow",
         "--property", "trivial",
         "--touches", "nonexistent_module",
+        # --scope too: it is named as ignored in the help entry, and without it
+        # in this argv that category claim is the one nothing executes.
+        "--scope", "nonexistent_scope",
         "--decision-log", str(log),
         "--print-ontology",
     )
@@ -477,6 +480,11 @@ def test_the_rejection_hint_names_the_tbox_that_did_the_rejecting(tmp_path: Path
     # the quoting function would make the expected value the implementation.
     assert str(path) in result.stderr
     assert "--print-ontology" in result.stderr
+    # `--ontology=<path>`, never a separate argument: a relative path beginning
+    # with `-` is a legal filename that argparse would read as another option,
+    # and quoting cannot fix it because the shell is not what breaks. Asserted
+    # as the separator alone, so the quoting style stays unpinned here.
+    assert "--ontology=" in result.stderr
 
     # Parsing the hint back must reach the same TBox that did the rejecting.
     # This reads it the way a POSIX shell would; it is evidence about that
@@ -540,11 +548,14 @@ def test_the_documented_composition_rule_matches_what_the_flag_actually_does(tmp
     assert "`--ontology` and `--text` still apply" in doc
     assert "a supplied `--decision-log` warns on stderr" in doc
     assert "Every argument other than `--ontology` is ignored" not in doc
+
+
 def test_a_quoted_path_survives_every_shell_the_hint_may_be_pasted_into():
     # The paste-back test reads the hint the way a POSIX shell would, so it is
     # structurally blind to cmd and PowerShell. This pins the emitted shape
-    # against what each of those three actually accepts, which is the only
-    # evidence here that is not shlex round-tripping its own output.
+    # against what those three accept -- a proxy for running them, not a
+    # measurement of them; the three-shell result is recorded in the commit
+    # that introduced the quoting.
     plain = "/home/me/tbox.json"
     assert cli._quote_path(plain) == plain, "a bare-safe path should not be quoted"
 
@@ -553,12 +564,23 @@ def test_a_quoted_path_survives_every_shell_the_hint_may_be_pasted_into():
         "C:" + chr(92) + "my tbox" + chr(92) + "t.json",      # a space
         "C:" + chr(92) + "o'brien" + chr(92) + "t.json",      # an apostrophe
         "C:" + chr(92) + "o'brien tbox" + chr(92) + "t.json",
+        # A POSIX spaced path: every case above also carries a backslash, so
+        # the space rule was forced by the backslash and would have gone
+        # unpinned on a platform without one.
+        "/home/me/my tbox/t.json",
+        # The only case that exercises the escaping branch. Illegal in a
+        # Windows filename, legal on POSIX, where this CLI also runs.
+        '/home/me/od"d/t.json',
     ):
         quoted = cli._quote_path(hostile)
         assert quoted.startswith('"') and quoted.endswith('"'), hostile
         # Double quotes, because cmd treats the POSIX single-quote form as
         # literal text and PowerShell mis-reads its apostrophe escaping.
         assert "'\"'\"'" not in quoted, hostile
-        # Backslashes stay literal inside double quotes in all three shells.
-        assert hostile in quoted, hostile
+        # Backslashes stay literal inside double quotes in all three shells,
+        # so the path survives verbatim unless it carries a quote of its own.
+        if '"' not in hostile:
+            assert hostile in quoted, hostile
+        else:
+            assert '\\"' in quoted, hostile
         assert shlex.split(quoted) == [hostile], hostile
