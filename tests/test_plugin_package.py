@@ -166,10 +166,24 @@ def test_every_selector_failure_kind_terminates_through_the_final_report():
     # Adding a kind to the CLI without a termination phrase fails here first.
     assert set(TERMINATION_PHRASE_BY_KIND) == set(cli.EXIT_BY_KIND)
 
+    # Scope the phrase to the sentence that actually carries the obligation.
+    # A whole-file check passes as soon as the kind is named anywhere -- and it
+    # did: `harness_error` reached the exit list while the list of terminations
+    # requiring a report still omitted it.
+    lists = {}
+    for name, document in (("implementation", implementation), ("report", report)):
+        found = re.search(
+            r"not only after a successful commit\. (.*?) (?:each )?still terminates "
+            r"the run",
+            document,
+        )
+        assert found, f"{name} no longer lists the terminations that require a report"
+        lists[name] = found.group(1)
+
     for kind, phrase in TERMINATION_PHRASE_BY_KIND.items():
         assert f"exit `{cli.EXIT_BY_KIND[kind]}`, `{kind}`" in implementation, kind
-        for document in (implementation, report):
-            assert phrase in document, (kind, phrase)
+        for name, termination_list in lists.items():
+            assert phrase in termination_list, (name, kind, phrase)
 
     assert "Report the conflict through `report-result` and stop." in implementation
     assert "Producing no plan is never a reason to stop without responding." in (

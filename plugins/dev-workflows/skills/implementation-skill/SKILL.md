@@ -196,8 +196,8 @@ For multiple atomic units, repeat implementation through commit for each unit.
 
 Run `report-result` once on every termination of the run, not only after a
 successful commit. A blocking gate verdict, an unavailable runtime, a rule
-conflict, or an abandoned unit still terminates the run and still requires the
-report.
+conflict, a harness defect, or an abandoned unit still terminates the run and
+still requires the report.
 
 ## Agent Use and Degraded Mode
 
