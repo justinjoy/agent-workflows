@@ -476,20 +476,24 @@ def test_the_rejection_hint_names_the_tbox_that_did_the_rejecting(tmp_path: Path
     result = _run_cli("--ontology", str(path), "--touches", "session_module")
 
     assert result.returncode == 2
+    # Against the hint, never against the whole stream: argparse prints a usage
+    # block listing every registered flag, so `"--print-ontology" in stderr`
+    # holds even when the hint never mentions it. That exact line shipped here
+    # and is what the house rule at the top of test_plugin_package.py is about.
+    hint = result.stderr.strip().splitlines()[-1].split("; ")[-1]
     # The path, not a particular quoting style: asserting the exact output of
     # the quoting function would make the expected value the implementation.
-    assert str(path) in result.stderr
-    assert "--print-ontology" in result.stderr
+    assert str(path) in hint
+    assert "--print-ontology" in hint
     # `--ontology=<path>`, never a separate argument: a relative path beginning
     # with `-` is a legal filename that argparse would read as another option,
     # and quoting cannot fix it because the shell is not what breaks. Asserted
     # as the separator alone, so the quoting style stays unpinned here.
-    assert "--ontology=" in result.stderr
+    assert "--ontology=" in hint
 
     # Parsing the hint back must reach the same TBox that did the rejecting.
     # This reads it the way a POSIX shell would; it is evidence about that
     # reading, not about every shell the hint might be pasted into.
-    hint = result.stderr.strip().splitlines()[-1].split("; ")[-1]
     # removeprefix/removesuffix are no-ops on a mismatch, so a reworded hint
     # would leave the trailing words on the argv, where the positional request
     # swallows them -- and this would quietly stop being a paste-back check.
@@ -552,10 +556,11 @@ def test_the_documented_composition_rule_matches_what_the_flag_actually_does(tmp
 
 def test_a_quoted_path_survives_every_shell_the_hint_may_be_pasted_into():
     # The paste-back test reads the hint the way a POSIX shell would, so it is
-    # structurally blind to cmd and PowerShell. This pins the emitted shape
-    # against what those three accept -- a proxy for running them, not a
-    # measurement of them; the three-shell result is recorded in the commit
-    # that introduced the quoting.
+    # structurally blind to cmd and PowerShell. This runs no shell either: it
+    # pins shape proxies that stand in for a measurement recorded in the commit
+    # that introduced the quoting, where the emitted string was pasted into all
+    # three. The last assertion below is shlex reading its own output, so treat
+    # this as a regression guard on the shape, not as evidence about a shell.
     plain = "/home/me/tbox.json"
     assert cli._quote_path(plain) == plain, "a bare-safe path should not be quoted"
 

@@ -50,10 +50,11 @@ KIND_BY_EXCEPTION = {
 }
 
 
-# The invariant halves of the vocabulary hint. Shared because they are the same
-# sentence in both branches; the variable middle -- which flags, in which order
-# -- stays asserted literally per branch, so a test cannot agree with the code
-# by construction.
+# The invariant halves of the vocabulary hint, named so the sentence has one
+# home. Tests must keep spelling them out literally rather than importing these:
+# the guard that the hint still starts and ends this way exists because
+# removeprefix/removesuffix are no-ops on a mismatch, and it becomes
+# unfalsifiable the moment both sides read the same constant.
 HINT_PREFIX = "run "
 HINT_SUFFIX = " to list the declared vocabulary"
 # Characters a path can carry unquoted in every shell a caller might paste
