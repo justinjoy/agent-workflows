@@ -477,6 +477,11 @@ def test_the_rejection_hint_names_the_tbox_that_did_the_rejecting(tmp_path: Path
         # loading, rather than the assertion, would be doing the work.
         rejected_hint = rejected.stderr.strip().splitlines()[-1].split("; ")[-1]
         assert str(path) in rejected_hint, flag
+        # Not redundant with the identical assertion further down, and not
+        # duplication to remove: a load failure carries no "; ", so the split
+        # above returns the whole line and the path assertion still holds. This
+        # is the line that separates "the carry-through works for both error
+        # kinds" from "the ontology never loaded".
         assert "--print-ontology" in rejected_hint, flag
 
     result = _run_cli("--ontology", str(path), "--touches", "session_module")
