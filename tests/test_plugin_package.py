@@ -899,7 +899,14 @@ def test_every_flag_the_documents_name_is_a_flag_the_cli_accepts():
     seen = set()
     for path in sources:
         text = path.read_text(encoding="utf-8")
-        for flag in re.findall(r"`(--[a-z][a-z-]*)`", text):
+        # Inline-backticked flags and flags inside fenced examples both count.
+        # The runnable command a reader copies lives in a fence, so scanning
+        # only inline text would let a typo there ship green.
+        flags = re.findall(r"`(--[a-z][a-z-]*)`", text)
+        flags += re.findall(r"(?<![`\w-])(--[a-z][a-z-]*)", "\n".join(
+            re.findall(r"```(?:bash|text)?\n(.*?)\n```", text, re.DOTALL)
+        ))
+        for flag in flags:
             seen.add(flag)
             assert flag in known, f"{path.name} names {flag}, which the CLI does not accept"
     assert "--print-ontology" in seen, "no document tells a caller the vocabulary is printable"

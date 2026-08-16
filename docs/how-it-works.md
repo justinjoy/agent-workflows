@@ -233,11 +233,14 @@ unobservable:
 ```
 
 That example is a subset: the bundled TBox has more rows in every relation.
-Every argument other than `--ontology` is ignored, including `--touches` and
-`--scope` values that would otherwise be rejected -- the caller reaching for
-this flag is usually the one whose name was just refused. An `--ontology` file
-that fails validation still exits `2` and prints nothing, because a document
-that did not load cannot be printed.
+
+`--ontology` and `--text` still apply, and a supplied `--decision-log` warns on
+stderr rather than being dropped in silence. The request text, `--property`,
+`--touches`, and `--scope` are ignored -- including `--touches` and `--scope`
+values that would otherwise be rejected, because the caller reaching for this
+flag is usually the one whose name was just refused. An `--ontology` file that
+fails validation still exits `2` and prints nothing, because a document that
+did not load cannot be printed.
 
 `--text` prints the same TBox one row per line, in the same relation order:
 

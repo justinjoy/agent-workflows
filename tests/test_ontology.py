@@ -320,6 +320,23 @@ def test_docs_show_a_printable_ontology_document_that_is_not_stale():
         if isinstance(parsed, dict) and set(parsed) == set(expected):
             documented.append(parsed)
 
+    # The text example is exactly as staleable as the JSON one: rename a
+    # surface and it silently lies. Same subset check, parsed the way the
+    # renderer writes it.
+    shown_rows = 0
+    # Anchor on line starts: an unanchored fence pattern begins matching at a
+    # *closing* fence and yields empty blocks.
+    for block in re.findall(r"^```[a-z]*\n(.*?)^```", doc, re.DOTALL | re.MULTILINE):
+        for line in block.splitlines():
+            relation, sep, rest = line.partition(": ")
+            if not sep or relation not in expected:
+                continue
+            left, arrow, right = rest.partition(" -> ")
+            assert arrow, line
+            assert (left, right) in {tuple(row) for row in expected[relation]}, line
+            shown_rows += 1
+    assert shown_rows, "the docs no longer show a text-rendered ontology example"
+
     assert documented, "the docs no longer show a printable ontology document"
     for parsed in documented:
         for relation, rows in parsed.items():
@@ -329,6 +346,7 @@ def test_docs_show_a_printable_ontology_document_that_is_not_stale():
             assert rows, f"the documented {relation} example is empty"
             shown = {tuple(row) for row in rows}
             assert shown <= {tuple(row) for row in expected[relation]}, relation
+
 def test_printed_ontology_text_mode_carries_the_whole_tbox():
     # Set equality per relation, not tuple equality: pinning row order would
     # fail a harmless later sort though no information changed. The line count
@@ -343,6 +361,12 @@ def test_printed_ontology_text_mode_carries_the_whole_tbox():
     lines = result.stdout.splitlines()
     assert len(lines) == sum(len(rows) for rows in expected.values())
 
+    # The docs promise text and JSON agree on relation order. Nothing else
+    # pinned it, so switching to declaration order would keep the set
+    # comparison below green while breaking a documented claim.
+    order = [line.partition(": ")[0] for line in lines]
+    assert order == sorted(order)
+
     rebuilt: dict[str, set[tuple[str, str]]] = {}
     for line in lines:
         relation, sep, rest = line.partition(": ")
@@ -356,6 +380,7 @@ def test_printed_ontology_text_mode_carries_the_whole_tbox():
         for relation, rows in expected.items()
         if rows
     }
+
 def test_a_rejected_fact_points_at_the_flag_that_lists_the_vocabulary():
     # The caller is reading stderr at this moment, not --help, and the message
     # named the relation to declare in but never the values it accepts. Both
@@ -368,3 +393,33 @@ def test_a_rejected_fact_points_at_the_flag_that_lists_the_vocabulary():
         assert result.stdout == ""
         assert bad in result.stderr, flag
         assert "--print-ontology" in result.stderr, flag
+
+def test_the_documented_composition_rule_matches_what_the_flag_actually_does():
+    # The help string and the docs are the one place a caller learns the
+    # composition semantics, and the first version of both said "every other
+    # argument is ignored" while --text changed the output and --decision-log
+    # warned. A contract that contradicts itself is worse than none, and this
+    # change exists to make the contract readable.
+    honoured = _run_cli("--print-ontology", "--text")
+    assert honoured.returncode == 0, honoured.stderr
+    assert honoured.stdout != _run_cli("--print-ontology").stdout, "--text is honoured"
+
+    warned = _run_cli("--print-ontology", "--decision-log", "unused.jsonl")
+    assert "decision log not written" in warned.stderr, "--decision-log is not ignored"
+
+    help_text = _flat_help(_run_cli("--help").stdout)
+    for honoured_flag in ("--ontology", "--text"):
+        assert honoured_flag in help_text
+    assert "a supplied --decision-log warns and writes nothing" in help_text
+    assert "every other argument is ignored" not in help_text
+
+    doc = " ".join((ROOT / "docs" / "how-it-works.md").read_text(encoding="utf-8").split())
+    assert "`--ontology` and `--text` still apply" in doc
+    assert "a supplied `--decision-log` warns on stderr" in doc
+    assert "Every argument other than `--ontology` is ignored" not in doc
+
+
+def _flat_help(text: str) -> str:
+    """argparse rewraps help by terminal width, so compare flattened."""
+
+    return " ".join(text.split())
