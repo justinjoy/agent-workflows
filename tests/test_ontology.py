@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -14,7 +15,6 @@ from agent_workflows_harness.models import RequestFacts
 from agent_workflows_harness.ontology import (
     DEFAULT_ONTOLOGY,
     Ontology,
-    _TERM_PATTERN,
     derive,
     derived_properties,
     load_ontology,
@@ -247,7 +247,10 @@ def test_cli_prints_the_active_ontology_as_a_loadable_document():
     # Round-trip equality is whitespace- and order-blind, so the shape the docs
     # show is pinned separately: dropping indent or sort_keys would leave the
     # example diverged from the real output with every assertion still green.
-    assert result.stdout == json.dumps(payload, indent=2, sort_keys=True) + "\n"
+    assert result.stdout == json.dumps(payload, indent=2, sort_keys=True) + "\n", (
+        "the docs show a pretty-printed, key-sorted document; sort_keys also "
+        "carries the documented relation order on the JSON side"
+    )
     # A successful run that selects nothing, so a caller reading `selected`
     # fails loudly instead of reading a TBox as an empty plan.
     assert "selected" not in payload and "blocked" not in payload
@@ -393,8 +396,18 @@ def test_printed_ontology_text_mode_carries_the_whole_tbox():
     # colon, or '>'. That coupling lives in a comment and in the docs; widening
     # _TERM_PATTERN would make the shipped output unparseable and the claim
     # false while every assertion above still passed.
+    # Through the public constructor rather than the module-private pattern:
+    # this pins the behaviour end to end, and a renamed regex fails as an
+    # assertion here instead of as an import error.
     for hostile in ("a b", "a:b", "a->b", "a>b"):
-        assert not _TERM_PATTERN.fullmatch(hostile), hostile
+        with pytest.raises(ValueError, match="must start with a letter"):
+            Ontology(
+                sub_class_of=((hostile, "Surface"),),
+                surface_class=(),
+                skill_class=(),
+                property_of_class=(),
+                scope_property=(),
+            )
 
     rebuilt: dict[str, set[tuple[str, str]]] = {}
     for line in lines:
@@ -439,13 +452,25 @@ def test_the_rejection_hint_names_the_tbox_that_did_the_rejecting(tmp_path: Path
         property_of_class=(("BillingSurface", "touches_shared_behavior"),),
         scope_property=(),
     )
-    path = tmp_path / "tbox.json"
+    # A directory with a space: the hint is a command a caller pastes back, and
+    # an unquoted path makes it read a different file or none -- tmp_path alone
+    # never contains a space, so the quoting would go unpinned.
+    directory = tmp_path / "my tbox"
+    directory.mkdir()
+    path = directory / "tbox.json"
     path.write_text(json.dumps(custom.to_dict()), encoding="utf-8")
 
     result = _run_cli("--ontology", str(path), "--touches", "session_module")
 
     assert result.returncode == 2
-    assert f"run --ontology {path} --print-ontology" in result.stderr
+    assert f"run --ontology {shlex.quote(str(path))} --print-ontology" in result.stderr
+
+    # Pasting the hint back must reach the same TBox that did the rejecting.
+    hint = result.stderr.strip().splitlines()[-1].split("; ")[-1]
+    argv = shlex.split(hint.removeprefix("run ").removesuffix(" to list the declared vocabulary"))
+    echoed = _run_cli(*argv)
+    assert echoed.returncode == 0, echoed.stderr
+    assert Ontology.from_dict(json.loads(echoed.stdout)) == custom
 
 
 def test_the_documented_composition_rule_matches_what_the_flag_actually_does():

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shlex
 import sys
 
 from .facts import classify_request
@@ -213,7 +214,11 @@ def main(argv: list[str] | None = None) -> int:
         # worse than no hint because it looks authoritative.
         printer = "--print-ontology"
         if args.ontology:
-            printer = f"--ontology {args.ontology} --print-ontology"
+            # Quoted when it needs to be: an unquoted path with a space makes
+            # the hint unrunnable, and pasting it back reads a different file
+            # or none -- the same failure this hint exists to prevent, one
+            # layer down.
+            printer = f"--ontology {shlex.quote(args.ontology)} --print-ontology"
         parser.error(f"{exc}; run {printer} to list the declared vocabulary")
     except Exception as exc:
         # Loading libwirelog fails here before the selector is ever reached.
