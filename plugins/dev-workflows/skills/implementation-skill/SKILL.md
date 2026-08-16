@@ -165,9 +165,7 @@ cross-module code changed.
 ### 7. Reviewer Pass
 
 Every code change, including documentation-only and trivial changes, selects
-`review-diff`. The Reviewer must not have written the change under review,
-except under whole-workflow degraded sequential mode, where no second agent
-exists and the weakened separation is declared and reported. Give it the raw
+`review-diff`. The Reviewer must not have written the change under review. Give it the raw
 uncommitted diff, candidate path set and digest, and the objective, not the
 Implementer's account. Every gate must identify the same
 `approved_candidate_tree` created from the base tree with a temporary index.
@@ -216,6 +214,39 @@ Independent role passes are the normal workflow. A role that inherits another
 role's reasoning can merely confirm it, which defeats the critique and review
 gates.
 
+No agent judges an artifact it produced. The producer of an
+`implementation_plan` never holds `critique-plan`, and the coordinator is the
+Implementer, so it never holds `review-diff`, `validate-final-design`, or
+`validate-final-risks`. This binds whoever comes to hold both, by dispatch or
+by degradation; it is not a property of the degradation path, and a coordinator
+that sent both planning passes to one agent has broken it without degrading
+anything.
+
+Beneath that, no single agent holds both `validate-final-design` and
+`validate-final-risks`, except where the selected plan and the reachable agents
+admit no assignment that separates them. That exception is never taken by
+choice, and the report must name the assignment that could not be constructed.
+Fix the assignment before the first dispatch: choosing it pass by pass spends
+the freedom that would have separated them and then reports the collapse as
+unavoidable.
+
+With exactly one independent agent the exception is forced -- that agent holds
+every judgment gate, so it judges both design and risk at final validation.
+Call that `single-judge mode`. Planning stays separated, because the
+coordinator may hold one of `create-implementation-plan` and `critique-plan`,
+neither of which judges the candidate. It takes `create-implementation-plan`:
+`critique-plan` is the only pass that ever interrogates the plan's quality,
+since final design validation holds the objective independently but otherwise
+uses the plan as its yardstick, and a sole check must be the independent one.
+
+`single-judge mode` surrenders four guarantees and the report names all four.
+The design verdict and the risk verdict come from one mind. That mind validates
+risks against a critique it wrote. Both final validations read review findings
+it wrote. And the intended design is the Implementer's own, independently
+critiqued but not independently authored. Three verdicts from one agent is one
+review with three headings; printing three approvals while disclosing one
+surrender manufactures the assurance this contract exists to withhold.
+
 Confirm receipt before treating any dispatched pass as complete. A pass is
 complete only when the coordinator holds that role's named artifact and the
 artifact echoes the identifiers its skill requires, such as the
@@ -262,16 +293,18 @@ holds the other side of the role's gate pair -- Architect and Critic,
 Implementer and Reviewer, or Implementer and final validation. When it does
 hold that other side and no further agent can be reached for the role, stop the
 run as blocked and report it through `report-result` rather than perform a
-self-review. If independent agents are unavailable in the host at all, there is
-no separation left to protect and the whole remaining workflow drops to
-degraded sequential mode instead, where the coordinator does run every gate and
-declares it. Preserve and use every successfully returned raw artifact; if a
+self-review. If no independent agent is available in the host at all, every
+judgment gate would fall to the author of the change, so no candidate can be
+approved and none can be committed. Do not begin editing to discover that: stop
+the run as blocked and report it. Preserve and use every successfully returned raw artifact; if a
 lost one arrives after the gate ran, use what was held at gate time and report
 the duplicate.
 
-Degraded mode weakens independence guarantees. It must not omit review, final
-validation, or commit gates. The final handoff must name every dispatch that
-delivered nothing, every role that ran degraded, and why.
+Degrading a role weakens independence guarantees and never applies to a
+judgment gate: `review-diff`, `validate-final-design`, and `validate-final-risks`
+are neither omitted nor absorbed by the coordinator, and one with nowhere
+independent to go stops the run instead. The final handoff must name every
+dispatch that delivered nothing, every role that ran degraded, and why.
 
 ## Completion Checklist
 
@@ -281,8 +314,8 @@ Before final response, verify:
   declared with the fail-closed plan, or a rule conflict was reported and the
   run stopped without editing.
 - The final response reports selected atomic skills and rule reasons.
-- Independent Architect and Critic passes ran when selected, or degraded mode
-  and its cause were declared.
+- Independent Architect and Critic passes ran when selected, or `single-judge
+  mode` or a degraded role was declared with its cause.
 - Every dispatched role's artifact reached the coordinator, or the failed
   dispatch, what changed on any re-dispatch, and the role that ran degraded as
   a result were all recorded. A role that delivered nothing and was not
@@ -315,5 +348,5 @@ In the final response, report:
   reported as one that did
 - every role dispatch that delivered no artifact, what changed on any
   re-dispatch, and which roles ran degraded as a result
-- whether degraded sequential mode covered the whole run, and every
-  independence guarantee that weakened
+- whether the run ran in `single-judge mode`, and every independence guarantee
+  that weakened

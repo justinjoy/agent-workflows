@@ -140,7 +140,7 @@ def test_gate_outcomes_must_reach_the_final_report():
         # `approved_candidate_tree` is a commit-gate term, not a registry output.
         assert "approved_candidate_tree" in document
         assert "blocked skills and their rule reasons" in document
-        assert "degraded sequential mode" in document
+        assert "single-judge mode" in document
 
     assert "on every termination of the run" in report
     assert "Never end a rejected run silently." in report
@@ -395,8 +395,12 @@ def test_the_contract_requires_confirmed_delivery_of_every_role_artifact():
     # The substance floor: an artifact that echoes nothing it judged is not
     # evidence, so requiring delivery cannot be satisfied by a rubber stamp.
     assert "echoes the identifiers its skill requires" in agent_use
-    # Host-wide unavailability must keep its own, broader rule.
-    assert "unavailable in the host at all" in agent_use
+    # Host-wide unavailability used to keep its own, broader rule: the whole
+    # workflow degraded and the coordinator ran every gate. That is retired --
+    # a run with no independent agent now stops rather than approving its own
+    # work -- so what is pinned here is the replacement, not the old branch.
+    assert "no independent agent is available in the host at all" in agent_use
+    assert "stop the run as blocked and report it" in agent_use
     # The floor is only as strong as what each role skill mandates, so the
     # contract has to require that every dispatched role mandates something.
     assert "must therefore require at least one such identifier" in agent_use
@@ -467,6 +471,96 @@ def test_every_dispatched_role_skill_states_that_producing_is_not_delivering():
         # Without this the clause is wrong under direct invocation, where the
         # caller is the coordinator and there is nothing to return to.
         assert "Under direct invocation the caller is the coordinator" in contract, skill_id
+
+
+NON_JUDGING_DISPATCHED_ROLES = frozenset(
+    # Dispatched, but they return proposals rather than verdicts on the
+    # candidate. A new dispatched role must be classified here or the judgment
+    # set below changes shape and this test says so.
+    {"create-implementation-plan", "critique-plan"}
+)
+
+
+def test_no_agent_judges_an_artifact_it_produced():
+    # Stated over the subject of judgment, not over "a candidate". That is what
+    # makes plan-author != plan-critic absolute -- critique-plan's subject IS
+    # the plan -- while leaving final validation surrenderable, since its
+    # subject is the candidate and the critique is only an input. Broader and
+    # single-judge mode becomes impossible; narrower and planning falls back to
+    # a preference, which is the defect issue #5 was opened on.
+    #
+    # Staleness tripwire: there is no dispatch runtime here, so this proves the
+    # contract states the obligation, never that a coordinator obeys it.
+    skill_root = ROOT / "plugins" / "dev-workflows" / "skills"
+    raw = (skill_root / "implementation-skill" / "SKILL.md").read_text(encoding="utf-8")
+    agent_use = _section(raw, "## Agent Use and Degraded Mode")
+    assert agent_use, "the contract no longer has an Agent Use and Degraded Mode section"
+
+    judging = _roles_dispatched_by_the_workflow(raw) - NON_JUDGING_DISPATCHED_ROLES
+    assert judging == {"review-diff", "validate-final-design", "validate-final-risks"}, (
+        "the set of dispatched passes that judge the candidate changed; classify "
+        "the new role in NON_JUDGING_DISPATCHED_ROLES or update this set"
+    )
+    for skill_id in judging:
+        assert f"`{skill_id}`" in agent_use, skill_id
+
+    assert "No agent judges an artifact it produced." in agent_use
+    # The half that must stay absolute, named by its own artifact.
+    assert "producer of an `implementation_plan` never holds `critique-plan`" in agent_use
+    # The generality fix: the rule is about who ends up holding both, not about
+    # how they got there.
+    assert "by dispatch or by degradation" in agent_use
+
+    # State-form, so the report can be checked against it, and auditable, so
+    # "never by choice" is not a claim about a mental state. Without the second
+    # clause the obligation reads as a preference and licenses exactly the
+    # same-agent-holds-both case this exists to forbid.
+    assert "no single agent holds both `validate-final-design` and" in agent_use
+    assert "admit no assignment that separates them" in agent_use
+    assert "never taken by choice" in agent_use
+    assert "name the assignment that could not be constructed" in agent_use
+    # Decided up front, or a greedy dispatch order manufactures a true
+    # "no assignment exists" and reports the collapse as unavoidable.
+    assert "Fix the assignment before the first dispatch" in agent_use
+
+    # The rule must precede the degradation paragraph. Widening the existing
+    # coordinator sentence in place satisfies a membership check and fails this.
+    assert agent_use.index("No agent judges an artifact it produced.") < agent_use.index(
+        "Degrading a role means the coordinator runs that skill itself"
+    )
+
+    # Every guarantee single-judge mode gives up, not just the headline one.
+    for surrender in (
+        "The design verdict and the risk verdict come from one mind.",
+        "validates risks against a critique it wrote",
+        "Both final validations read review findings it wrote.",
+        "independently critiqued but not independently authored",
+    ):
+        assert surrender in agent_use, surrender
+
+
+def test_whole_workflow_degradation_is_retired_from_every_shipped_contract():
+    # The coordinator running every gate on its own change produced approvals
+    # nobody independent had given. Retiring it is only real if no shipped
+    # contract still offers it, so this sweeps them all rather than the one
+    # file the retirement edited.
+    #
+    # docs/how-it-works.md is deliberately NOT swept: it is the file whose job
+    # is to explain what changed and why, and banning the phrase there would
+    # make documenting the retirement a test failure.
+    shipped = [*(ROOT / "plugins").rglob("SKILL.md"), *(ROOT / "plugins").rglob("agents/*.yaml")]
+    assert len(shipped) > 5, "no shipped contracts found"
+    for path in shipped:
+        text = _flat(path.read_text(encoding="utf-8"))
+        assert "degraded sequential mode" not in text, path.name
+        assert "except under whole-workflow" not in text, path.name
+
+    # Paired with the positive for the state that replaced it: a negative alone
+    # goes stale in silence if the mode is reworded rather than removed.
+    skill_root = ROOT / "plugins" / "dev-workflows" / "skills"
+    for name in ("implementation-skill", "report-result"):
+        document = _flat((skill_root / name / "SKILL.md").read_text(encoding="utf-8"))
+        assert "single-judge mode" in document, name
 
 
 def test_the_contract_never_promises_a_document_for_rejected_input():

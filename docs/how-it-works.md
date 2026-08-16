@@ -271,15 +271,24 @@ The skill deliberately describes this as an obligation rather than naming a
 mechanism, because the same contract ships to four hosts. Concrete mechanisms
 belong here, not in the skill.
 
+No agent judges an artifact it produced. That is why the producer of a plan
+never critiques it, and why the coordinator -- which is the Implementer --
+never holds `review-diff`, `validate-final-design`, or `validate-final-risks`.
+The rule binds whoever comes to hold both, by dispatch or by degradation, and
+it is not a property of the degradation path: a coordinator that dispatched
+both planning passes to the same agent has broken it without degrading
+anything.
+
 A failed dispatch is re-tried at most once, and only when something material
 changes -- resending an identical prompt carries no new information. If that
-also delivers nothing, only that role degrades, and while other agents remain
-reachable no single agent may hold both sides of a gate pair. When host-native
-independent agents are unavailable altogether, the skill switches the whole
-remaining workflow to degraded sequential mode. The workflow still runs the
-same gates, but the final report must name every dispatch that delivered
-nothing, every role that ran degraded, and which independence guarantees were
-weakened.
+also delivers nothing, only that role degrades. A judgment gate has nowhere to
+degrade to, so one that cannot reach an independent agent stops the run as
+blocked instead. With no independent agent at all, every judgment gate would
+fall to the author of the change, so the run stops as blocked before editing
+rather than approving its own work.
+
+The final report must name every dispatch that delivered nothing, every role
+that ran degraded, and which independence guarantees were weakened.
 
 ## Atomic Changes and Commits
 

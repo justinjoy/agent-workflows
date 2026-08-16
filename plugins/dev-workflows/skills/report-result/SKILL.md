@@ -30,8 +30,8 @@ Report:
   reported as one that did
 - every role dispatch that delivered no artifact, what changed on any
   re-dispatch, and which roles ran degraded as a result
-- whether degraded sequential mode covered the whole run, and every
-  independence guarantee that weakened
+- whether the run ran in `single-judge mode`, and every independence guarantee
+  that weakened
 - residual risks or unavailable validation
 - unrelated untracked or modified files
 
