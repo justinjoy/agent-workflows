@@ -137,8 +137,10 @@ def _parser() -> argparse.ArgumentParser:
         "--print-ontology",
         action="store_true",
         help=(
-            "Print the active TBox as JSON and exit without evaluating any "
-            "facts. Honours --ontology; every other argument is ignored."
+            "Print the active TBox and exit without evaluating any facts. "
+            "Honours --ontology and --text; a supplied --decision-log warns "
+            "and writes nothing; the request text, --property, --touches, and "
+            "--scope are ignored."
         ),
     )
     parser.add_argument(

@@ -790,7 +790,11 @@ def test_printing_the_ontology_does_not_need_the_wirelog_runtime(capsys, monkeyp
     # printable without a working runtime.
     monkeypatch.setitem(sys.modules, "pyrewire", None)
 
-    code = cli.main(["--print-ontology"])
+    # The surface matters: derive() returns before importing pyrewire when
+    # there are no triples, so without one this would stay green even if the
+    # branch moved below derive() -- pinning a weaker property than the name
+    # claims.
+    code = cli.main(["--print-ontology", "--touches", "session_module"])
     payload = json.loads(capsys.readouterr().out)
 
     assert code == 0
