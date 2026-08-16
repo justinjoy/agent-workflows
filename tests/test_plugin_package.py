@@ -177,6 +177,30 @@ def test_every_selector_failure_kind_terminates_through_the_final_report():
         assert "`error.kind` and exit code when the run produced no plan" in document
 
 
+def test_the_contract_never_promises_a_document_for_rejected_input():
+    # exit 2 comes from argparse and prints nothing on stdout. Listing it under
+    # a sentence that promised an `error` document told coordinators to parse a
+    # document that is never there -- the same "empty stdout reads as no plan"
+    # hazard the rest of this contract exists to close.
+    skill_root = ROOT / "plugins" / "dev-workflows" / "skills"
+    implementation = _flat(
+        (skill_root / "implementation-skill" / "SKILL.md").read_text(encoding="utf-8")
+    )
+    doc = _flat((ROOT / "docs" / "how-it-works.md").read_text(encoding="utf-8"))
+
+    assert "Stdout is empty and the cause is on stderr" in implementation
+    assert (
+        f"Exits `{cli.EXIT_SELECTOR_UNAVAILABLE}` and `{cli.EXIT_RULE_CONFLICT}` "
+        "emit an `error` document carrying a `kind` on stdout; exit `2` does not."
+    ) in implementation
+    assert "Exit `2` prints no document at all" in doc
+    # The durable-trace claim must not cover the exit that cannot reach the log.
+    assert (
+        f"A run that failed at exit `{cli.EXIT_SELECTOR_UNAVAILABLE}` or "
+        f"`{cli.EXIT_RULE_CONFLICT}` appends an" in doc
+    )
+
+
 def test_provider_versions_follow_release_policy():
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     expected_version = project["project"]["version"]
