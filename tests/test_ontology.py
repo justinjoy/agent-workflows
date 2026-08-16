@@ -428,6 +428,26 @@ def test_a_rejected_fact_points_at_the_flag_that_lists_the_vocabulary():
         assert "run --print-ontology to list the declared vocabulary" in result.stderr, flag
 
 
+def test_the_rejection_hint_names_the_tbox_that_did_the_rejecting(tmp_path: Path):
+    # Without the path, a caller whose custom TBox rejected them follows the
+    # hint and reads the bundled default -- a vocabulary with nothing to do
+    # with the one that refused them, and authoritative-looking.
+    custom = Ontology(
+        sub_class_of=(("BillingSurface", "Surface"),),
+        surface_class=(("billing_ledger", "BillingSurface"),),
+        skill_class=(),
+        property_of_class=(("BillingSurface", "touches_shared_behavior"),),
+        scope_property=(),
+    )
+    path = tmp_path / "tbox.json"
+    path.write_text(json.dumps(custom.to_dict()), encoding="utf-8")
+
+    result = _run_cli("--ontology", str(path), "--touches", "session_module")
+
+    assert result.returncode == 2
+    assert f"run --ontology {path} --print-ontology" in result.stderr
+
+
 def test_the_documented_composition_rule_matches_what_the_flag_actually_does():
     # The help string and the docs are the one place a caller learns the
     # composition semantics, and the first version of both said "every other
