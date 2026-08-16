@@ -258,7 +258,28 @@ The workflow depends on separation between roles:
 - Implementer and Reviewer should be independent so the reviewer is not checking its own work.
 - Final Architect and Critic validation confirms that the finished diff still matches the original goal and that accepted risks are deliberate.
 
-When host-native independent agents are unavailable, the skill switches to degraded sequential mode. The workflow still runs the same gates, but the final report must say which independence guarantees were weakened.
+Independence is only real if the role's output arrives. A dispatched role can
+finish its work and still deliver nothing, because hosts differ in how a
+subagent's output reaches its coordinator: some return it directly, some expect
+the role to send it back explicitly, and some expect an agreed file. The
+coordinator determines which applies before the first dispatch, names it in
+every dispatch prompt, and confirms it holds the named artifact before treating
+the pass as complete. A role that finished or went idle without delivering is
+treated as a failed dispatch, not a completed pass.
+
+The skill deliberately describes this as an obligation rather than naming a
+mechanism, because the same contract ships to four hosts. Concrete mechanisms
+belong here, not in the skill.
+
+A failed dispatch is re-tried at most once, and only when something material
+changes -- resending an identical prompt carries no new information. If that
+also delivers nothing, only that role degrades, and while other agents remain
+reachable no single agent may hold both sides of a gate pair. When host-native
+independent agents are unavailable altogether, the skill switches the whole
+remaining workflow to degraded sequential mode. The workflow still runs the
+same gates, but the final report must name every dispatch that delivered
+nothing, every role that ran degraded, and which independence guarantees were
+weakened.
 
 ## Atomic Changes and Commits
 
