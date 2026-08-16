@@ -14,3 +14,8 @@ Output `critique_findings` focused on:
 - weak failure handling
 - tests that would pass without proving behavior
 - over-broad or non-atomic change boundaries
+
+When a coordinator dispatched this skill, producing `critique_findings` is not
+delivering it: return it the way that dispatch named. A pass that ends without
+the coordinator holding it is a failed dispatch and its work is lost. Under
+direct invocation the caller is the coordinator and delivery is immediate.

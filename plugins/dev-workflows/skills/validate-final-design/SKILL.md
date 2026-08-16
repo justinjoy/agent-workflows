@@ -22,3 +22,8 @@ A `blocked` verdict must state its reasons and must be surfaced in
 `report-result`. It stops the commit gate; it never ends the run silently.
 
 Any candidate change invalidates this approval.
+
+When a coordinator dispatched this skill, producing `architect_validation` is not
+delivering it: return it the way that dispatch named. A pass that ends without
+the coordinator holding it is a failed dispatch and its work is lost. Under
+direct invocation the caller is the coordinator and delivery is immediate.
