@@ -56,9 +56,11 @@ def test_atomic_skills_exist_in_plugin_layout():
 
 
 def test_implementation_skill_resolves_installed_harness_forms():
-    skill = (
-        ROOT / "plugins" / "dev-workflows" / "skills" / "implementation-skill" / "SKILL.md"
-    ).read_text(encoding="utf-8")
+    skill = _flat(
+        (
+            ROOT / "plugins" / "dev-workflows" / "skills" / "implementation-skill" / "SKILL.md"
+        ).read_text(encoding="utf-8")
+    )
 
     assert "Wirelog-based implementation harness" in skill
     assert "evaluates Wirelog rules through PyreWire" in skill
@@ -70,11 +72,11 @@ def test_implementation_skill_resolves_installed_harness_forms():
 
 def test_implementation_skill_requires_review_consensus_before_commit():
     skill_root = ROOT / "plugins" / "dev-workflows" / "skills"
-    implementation = (skill_root / "implementation-skill" / "SKILL.md").read_text(
-        encoding="utf-8"
+    implementation = _flat(
+        (skill_root / "implementation-skill" / "SKILL.md").read_text(encoding="utf-8")
     )
-    commit = (skill_root / "commit-atomic-change" / "SKILL.md").read_text(
-        encoding="utf-8"
+    commit = _flat(
+        (skill_root / "commit-atomic-change" / "SKILL.md").read_text(encoding="utf-8")
     )
 
     assert (
@@ -99,10 +101,10 @@ def test_implementation_skill_requires_review_consensus_before_commit():
         "validate-final-risks",
     )
     for skill_id in gate_skills:
-        contract = (skill_root / skill_id / "SKILL.md").read_text(encoding="utf-8")
+        contract = _flat((skill_root / skill_id / "SKILL.md").read_text(encoding="utf-8"))
         assert "approved_candidate_tree" in contract
 
-    review = (skill_root / "review-diff" / "SKILL.md").read_text(encoding="utf-8")
+    review = _flat((skill_root / "review-diff" / "SKILL.md").read_text(encoding="utf-8"))
     assert "output must echo" in review
     assert "approved candidate path set" in review
     assert "content digest reviewed" in review
@@ -495,8 +497,8 @@ def test_claude_marketplace_points_to_shared_lifecycle_skill_layout():
     assert implementation_path.is_file()
     assert commit_path.is_file()
 
-    implementation = implementation_path.read_text(encoding="utf-8")
-    commit = commit_path.read_text(encoding="utf-8")
+    implementation = _flat(implementation_path.read_text(encoding="utf-8"))
+    commit = _flat(commit_path.read_text(encoding="utf-8"))
     assert "including documentation-only and trivial changes" in implementation
     assert "commit-atomic-change" in implementation
     assert "Reviewer, Architect, and Critic approve" in implementation
@@ -515,11 +517,11 @@ def test_antigravity_plugin_root_exposes_shared_lifecycle_skills():
     assert "verified atomic commits" in manifest["description"]
 
     skill_root = plugin_root / "skills"
-    implementation = (skill_root / "implementation-skill" / "SKILL.md").read_text(
-        encoding="utf-8"
+    implementation = _flat(
+        (skill_root / "implementation-skill" / "SKILL.md").read_text(encoding="utf-8")
     )
-    commit = (skill_root / "commit-atomic-change" / "SKILL.md").read_text(
-        encoding="utf-8"
+    commit = _flat(
+        (skill_root / "commit-atomic-change" / "SKILL.md").read_text(encoding="utf-8")
     )
     prompt = (
         skill_root / "implementation-skill" / "agents" / "antigravity.yaml"
