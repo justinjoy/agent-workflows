@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from agent_workflows_harness import cli
 from agent_workflows_harness.models import RequestFacts
 from agent_workflows_harness.ontology import (
     DEFAULT_ONTOLOGY,
@@ -326,13 +327,22 @@ def test_docs_show_a_printable_ontology_document_that_is_not_stale():
     shown_rows = 0
     # Anchor on line starts: an unanchored fence pattern begins matching at a
     # *closing* fence and yields empty blocks.
-    for block in re.findall(r"^```[a-z]*\n(.*?)^```", doc, re.DOTALL | re.MULTILINE):
+    for tag, block in re.findall(r"^```([a-z]*)\n(.*?)^```", doc, re.DOTALL | re.MULTILINE):
+        # Only untagged fences: the renderer's output is untagged, and a JSON
+        # fence contains `"path": "a -> b"` lines that would otherwise be read
+        # as rows. Untagged fences that are not rows (the text-mode error
+        # example) carry no ` -> ` and drop out below.
+        if tag:
+            continue
         for line in block.splitlines():
             relation, sep, rest = line.partition(": ")
-            if not sep or relation not in expected:
-                continue
             left, arrow, right = rest.partition(" -> ")
-            assert arrow, line
+            if not sep or not arrow:
+                continue
+            # Resolve every `x: y -> z` line rather than skipping unknown
+            # relations: skipping would let a mistyped relation name drop out
+            # of the count in silence.
+            assert relation in expected, line
             assert (left, right) in {tuple(row) for row in expected[relation]}, line
             shown_rows += 1
     assert shown_rows, "the docs no longer show a text-rendered ontology example"
@@ -346,6 +356,7 @@ def test_docs_show_a_printable_ontology_document_that_is_not_stale():
             assert rows, f"the documented {relation} example is empty"
             shown = {tuple(row) for row in rows}
             assert shown <= {tuple(row) for row in expected[relation]}, relation
+
 
 def test_printed_ontology_text_mode_carries_the_whole_tbox():
     # Set equality per relation, not tuple equality: pinning row order would
@@ -381,6 +392,7 @@ def test_printed_ontology_text_mode_carries_the_whole_tbox():
         if rows
     }
 
+
 def test_a_rejected_fact_points_at_the_flag_that_lists_the_vocabulary():
     # The caller is reading stderr at this moment, not --help, and the message
     # named the relation to declare in but never the values it accepts. Both
@@ -393,6 +405,7 @@ def test_a_rejected_fact_points_at_the_flag_that_lists_the_vocabulary():
         assert result.stdout == ""
         assert bad in result.stderr, flag
         assert "--print-ontology" in result.stderr, flag
+
 
 def test_the_documented_composition_rule_matches_what_the_flag_actually_does():
     # The help string and the docs are the one place a caller learns the
@@ -407,19 +420,24 @@ def test_the_documented_composition_rule_matches_what_the_flag_actually_does():
     warned = _run_cli("--print-ontology", "--decision-log", "unused.jsonl")
     assert "decision log not written" in warned.stderr, "--decision-log is not ignored"
 
-    help_text = _flat_help(_run_cli("--help").stdout)
-    for honoured_flag in ("--ontology", "--text"):
-        assert honoured_flag in help_text
-    assert "a supplied --decision-log warns and writes nothing" in help_text
-    assert "every other argument is ignored" not in help_text
+    # Read the flag's own help entry, not the whole --help dump: argparse lists
+    # --ontology and --text as their own entries regardless, so asserting they
+    # appear anywhere would hold no matter what this flag claims.
+    (action,) = [a for a in cli._parser()._actions if a.dest == "print_ontology"]
+    own_help = " ".join(action.help.split())
+    assert "Honours --ontology and --text" in own_help
+    assert "a supplied --decision-log warns and writes nothing" in own_help
+    assert "every other argument is ignored" not in own_help
+
+    # Every argument the parser accepts must be classified by that entry, so a
+    # flag added later cannot land in neither category unnoticed.
+    for other in cli._parser()._actions:
+        if other.dest in {"help", "print_ontology"}:
+            continue
+        name = other.option_strings[0] if other.option_strings else "request text"
+        assert name in own_help, f"{name} is neither honoured nor ignored"
 
     doc = " ".join((ROOT / "docs" / "how-it-works.md").read_text(encoding="utf-8").split())
     assert "`--ontology` and `--text` still apply" in doc
     assert "a supplied `--decision-log` warns on stderr" in doc
     assert "Every argument other than `--ontology` is ignored" not in doc
-
-
-def _flat_help(text: str) -> str:
-    """argparse rewraps help by terminal width, so compare flattened."""
-
-    return " ".join(text.split())
