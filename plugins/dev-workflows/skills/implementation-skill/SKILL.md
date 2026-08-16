@@ -133,7 +133,9 @@ Run this pass only when the selected skill plan includes
 short implementation plan before editing. Give it the intake findings and the
 objective; do not give it a plan to confirm. Dispatch it under Agent Use and
 Degraded Mode: the pass is not complete until the coordinator holds
-`implementation_plan`.
+`implementation_plan`. In `single-judge mode` the coordinator writes the plan
+itself and the one agent critiques it, for the reason given there; dispatching
+authorship instead would leave that agent critiquing its own plan.
 
 ### 4. Critic Pass
 
@@ -165,9 +167,9 @@ cross-module code changed.
 ### 7. Reviewer Pass
 
 Every code change, including documentation-only and trivial changes, selects
-`review-diff`. The Reviewer must not have written the change under review. Give it the raw
-uncommitted diff, candidate path set and digest, and the objective, not the
-Implementer's account. Every gate must identify the same
+`review-diff`. The Reviewer must not have written the change under review. Give
+it the raw uncommitted diff, candidate path set and digest, and the objective,
+not the Implementer's account. Every gate must identify the same
 `approved_candidate_tree` created from the base tree with a temporary index.
 Dispatch it under Agent Use and Degraded Mode: the pass is not complete until
 the coordinator holds `review_findings`.
@@ -240,13 +242,16 @@ neither of which judges the candidate. It takes `create-implementation-plan`:
 since final design validation holds the objective independently but otherwise
 uses the plan as its yardstick, and a sole check must be the independent one.
 
-`single-judge mode` surrenders four guarantees and the report names all four.
+`single-judge mode` surrenders five guarantees and the report names all five.
 The design verdict and the risk verdict come from one mind. That mind validates
 risks against a critique it wrote. Both final validations read review findings
-it wrote. And the intended design is the Implementer's own, independently
-critiqued but not independently authored. Three verdicts from one agent is one
-review with three headings; printing three approvals while disclosing one
-surrender manufactures the assurance this contract exists to withhold.
+it wrote. The intended design is the Implementer's own, independently critiqued
+but not independently authored. And that agent cleared the plan at
+`critique-plan` before reviewing and validating against it, so withholding the
+Implementer's account from the Reviewer no longer withholds the design the
+Reviewer already accepted. Three verdicts from one agent is one review with
+three headings; printing three approvals while disclosing one surrender
+manufactures the assurance this contract exists to withhold.
 
 Confirm receipt before treating any dispatched pass as complete. A pass is
 complete only when the coordinator holds that role's named artifact and the
@@ -308,9 +313,9 @@ run as blocked and report it through `report-result` rather than perform a
 self-review. If no independent agent is available in the host at all, every
 judgment gate would fall to the author of the change, so no candidate can be
 approved and none can be committed. Do not begin editing to discover that: stop
-the run as blocked and report it. Preserve and use every successfully returned raw artifact; if a
-lost one arrives after the gate ran, use what was held at gate time and report
-the duplicate.
+the run as blocked and report it. Preserve and use every successfully returned
+raw artifact; if a lost one arrives after the gate ran, use what was held at
+gate time and report the duplicate.
 
 Degrading a role weakens independence guarantees and never applies to a
 judgment gate: `review-diff`, `validate-final-design`, and `validate-final-risks`

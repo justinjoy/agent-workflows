@@ -535,8 +535,26 @@ def test_no_agent_judges_an_artifact_it_produced():
         "validates risks against a critique it wrote",
         "Both final validations read review findings it wrote.",
         "independently critiqued but not independently authored",
+        "cleared the plan at `critique-plan` before reviewing and validating",
     ):
         assert surrender in agent_use, surrender
+
+    # Everything above is a substring check, so a hedge inserted in front of
+    # either rule leaves all of them matching while the rule becomes advice.
+    # That was demonstrated, not assumed: prefixing both halves with a
+    # qualifier keeps the whole suite green. This does not close the gap -- no
+    # substring test can, and these tests never prove a coordinator obeys the
+    # contract, only that the contract says it -- but it puts the cost above
+    # one adjective.
+    for hedge in (
+        "where practical",
+        "where possible",
+        "when convenient",
+        "where convenient",
+        "prefer",
+        "should ordinarily",
+    ):
+        assert hedge not in agent_use.lower(), hedge
 
 
 def test_the_contract_establishes_agent_capacity_before_the_first_dispatch():
