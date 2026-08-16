@@ -180,7 +180,18 @@ def main(argv: list[str] | None = None) -> int:
                 "decision log not written: --print-ontology selects nothing to record",
                 file=sys.stderr,
             )
-        print(json.dumps((ontology or DEFAULT_ONTOLOGY).to_dict(), indent=2, sort_keys=True))
+        document = (ontology or DEFAULT_ONTOLOGY).to_dict()
+        if args.text:
+            # `relation: left -> right`, one row per line. No term can contain
+            # a space, ':' or '>' -- ontology._TERM_PATTERN forbids them -- so
+            # the line splits unambiguously. Relations in sorted order, so text
+            # and JSON agree. This form is for reading and grepping; JSON is
+            # the surface to parse.
+            for relation in sorted(document):
+                for left, right in document[relation]:
+                    print(f"{relation}: {left} -> {right}")
+        else:
+            print(json.dumps(document, indent=2, sort_keys=True))
         return 0
 
     try:
