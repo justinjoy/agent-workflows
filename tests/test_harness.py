@@ -8,7 +8,7 @@ import sys
 from importlib.metadata import version
 from pathlib import Path
 
-from agent_workflows_harness import cli
+from agent_workflows_harness import cli, selector
 from agent_workflows_harness.facts import classify_request
 from agent_workflows_harness.models import RequestFacts
 from agent_workflows_harness.ontology import derive
@@ -275,6 +275,26 @@ def test_plan_from_rows_collapses_identical_rows_but_rejects_disagreeing_ones():
             assert expected in str(exc)
         else:  # pragma: no cover
             raise AssertionError(f"expected a conflict for {selected_rows or blocked_rows}")
+
+
+def test_disagreeing_rules_reach_the_caller_through_the_real_runtime(monkeypatch):
+    # plan_from_rows is proved with hand-built tuples and the CLI path with a
+    # monkeypatched selector, so nothing crossed the seam between them: that
+    # the runtime yields both rows rather than collapsing them was an untested
+    # assumption about a third-party library.
+    monkeypatch.setattr(
+        selector,
+        "RULES",
+        selector.RULES
+        + '\nselected_skill(80, 8, 9) :-\n    request_type(Req, "code_change").\n',
+    )
+
+    try:
+        select_plan(RequestFacts.from_properties({"trivial"}))
+    except SelectorRuleConflictError as exc:
+        assert "review-diff: (80, 8), (80, 9)" in str(exc)
+    else:  # pragma: no cover
+        raise AssertionError("the runtime collapsed two disagreeing rows")
 
 
 def test_a_rule_conflict_is_not_reported_as_a_dead_runtime(capsys, monkeypatch):
