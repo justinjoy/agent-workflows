@@ -478,7 +478,7 @@ def test_the_rejection_hint_names_the_tbox_that_did_the_rejecting(tmp_path: Path
     assert Ontology.from_dict(json.loads(echoed.stdout)) == custom
 
 
-def test_the_documented_composition_rule_matches_what_the_flag_actually_does():
+def test_the_documented_composition_rule_matches_what_the_flag_actually_does(tmp_path: Path):
     # The help string and the docs are the one place a caller learns the
     # composition semantics, and the first version of both said "every other
     # argument is ignored" while --text changed the output and --decision-log
@@ -488,8 +488,13 @@ def test_the_documented_composition_rule_matches_what_the_flag_actually_does():
     assert honoured.returncode == 0, honoured.stderr
     assert honoured.stdout != _run_cli("--print-ontology").stdout, "--text is honoured"
 
-    warned = _run_cli("--print-ontology", "--decision-log", "unused.jsonl")
+    # tmp_path, not a relative name: _run_cli runs with cwd=ROOT, so a
+    # regression that wrote the log would drop a stray file in the repo root
+    # while this test still passed on stderr alone.
+    log = tmp_path / "unused.jsonl"
+    warned = _run_cli("--print-ontology", "--decision-log", str(log))
     assert "decision log not written" in warned.stderr, "--decision-log is not ignored"
+    assert not log.exists()
 
     # Read the flag's own help entry, not the whole --help dump: argparse lists
     # --ontology and --text as their own entries regardless, so asserting they
