@@ -145,9 +145,8 @@ Resolve Critic objections before implementation. This pass never goes to the
 agent that produced the plan, and in `single-judge mode` it is the one pass the
 single agent holds that the coordinator could otherwise have taken -- it is
 what interrogates the plan's quality, so it is the one that must stay
-independent. Dispatch it under Agent Use and
-Degraded Mode: the pass is not complete until the coordinator holds
-`critique_findings`.
+independent. Dispatch it under Agent Use and Degraded Mode: the pass is not
+complete until the coordinator holds `critique_findings`.
 
 ### 5. Implementer Pass
 
