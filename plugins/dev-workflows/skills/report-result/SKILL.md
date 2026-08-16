@@ -25,8 +25,10 @@ Report:
 - every atomic commit hash, subject, committed path set, and approved tree or
   diff digest
 - pull request URL when applicable
-- whether degraded sequential mode was used and every independence guarantee it
-  weakened
+- every role dispatch that delivered no artifact, what changed on any
+  re-dispatch, and which roles ran degraded as a result
+- whether degraded sequential mode covered the whole run, and every
+  independence guarantee that weakened
 - residual risks or unavailable validation
 - unrelated untracked or modified files
 

@@ -131,13 +131,17 @@ Protect unrelated work. Do not stage, revert, or modify unrelated files.
 Run this pass only when the selected skill plan includes
 `create-implementation-plan`. Ask an independent Architect agent to produce a
 short implementation plan before editing. Give it the intake findings and the
-objective; do not give it a plan to confirm.
+objective; do not give it a plan to confirm. Dispatch it under Agent Use and
+Degraded Mode: the pass is not complete until the coordinator holds
+`implementation_plan`.
 
 ### 4. Critic Pass
 
 Run this pass only when the selected skill plan includes `critique-plan`.
 Before implementation, have the Critic challenge the Architect plan. Resolve
-Critic objections before implementation.
+Critic objections before implementation. Dispatch it under Agent Use and
+Degraded Mode: the pass is not complete until the coordinator holds
+`critique_findings`.
 
 ### 5. Implementer Pass
 
@@ -165,6 +169,8 @@ Every code change, including documentation-only and trivial changes, selects
 it the raw uncommitted diff, candidate path set and digest, and the objective,
 not the Implementer's account. Every gate must identify the same
 `approved_candidate_tree` created from the base tree with a temporary index.
+Dispatch it under Agent Use and Degraded Mode: the pass is not complete until
+the coordinator holds `review_findings`.
 
 ### 8. Architect and Critic Validation
 
@@ -177,7 +183,10 @@ agree there are no blocking issues.
 
 Each gate returns an explicit `verdict` of `approved` or `blocked`. A `blocked`
 verdict stops the commit gate for that candidate; it never ends the run
-silently. Report the verdict and its reasons through `report-result`.
+silently. Report the verdict and its reasons through `report-result`. Dispatch
+both under Agent Use and Degraded Mode: neither pass is complete until the
+coordinator holds `architect_validation` and `critic_validation` echoing the
+`approved_candidate_tree` they judged.
 
 Any fix invalidates prior test, review, and final validation artifacts. Repeat
 the selected validation, independent review, and final validation gates for the
@@ -205,13 +214,43 @@ Independent role passes are the normal workflow. A role that inherits another
 role's reasoning can merely confirm it, which defeats the critique and review
 gates.
 
-If independent agents are unavailable in the current host, or dispatch fails for
-any selected role, immediately switch the remaining workflow to degraded
-sequential mode. Preserve and use every successfully returned raw artifact.
+Confirm receipt before treating any dispatched pass as complete. A pass is
+complete only when the coordinator holds that role's named artifact and the
+artifact echoes the identifiers its skill requires, such as the
+`approved_candidate_tree` ID a validation gate judged. Work the coordinator
+never received was not delivered, and a verdict that echoes nothing it judged
+is not evidence the role saw the candidate. Requiring an artifact without
+requiring that substance only trades a silent loss for a rubber stamp.
+
+Artifacts do not come back the same way in every host. Identify how a
+dispatched role's output actually reaches the coordinator before the first
+dispatch, and name it in every dispatch prompt together with the artifact the
+role must return.
+
+A role that ends, goes idle, or reports itself available without the
+coordinator holding its artifact is a failed dispatch, not a completed pass.
+So is a bound the coordinator set before dispatching that elapses with nothing
+delivered. Treat either exactly as an error; waiting on a role that already
+stopped is the hang this rule exists to prevent.
+
+Re-dispatch a failed role at most once, and only when something material
+changes: naming a return path the lost prompt omitted, a different agent, or a
+synchronous dispatch. Re-sending an identical prompt carries no new
+information, so degrade instead.
+
+If the re-dispatch also delivers nothing, degrade that role alone and keep
+every other role independent. While other agents can still be reached, no
+single agent may hold both sides of a gate pair -- Architect and Critic,
+Implementer and Reviewer, or Implementer and final validation -- so re-dispatch
+to a different agent rather than absorbing the role. If independent agents are
+unavailable in the host at all, that pairing rule cannot apply and the whole
+remaining workflow drops to degraded sequential mode instead. Preserve and use
+every successfully returned raw artifact; if a lost one arrives after the gate
+ran, use what was held at gate time and report the duplicate.
 
 Degraded mode weakens independence guarantees. It must not omit review, final
-validation, or commit gates. The final handoff must explicitly name which role
-separations were weakened and why.
+validation, or commit gates. The final handoff must name every dispatch that
+delivered nothing, every role that ran degraded, and why.
 
 ## Completion Checklist
 
@@ -223,6 +262,10 @@ Before final response, verify:
 - The final response reports selected atomic skills and rule reasons.
 - Independent Architect and Critic passes ran when selected, or degraded mode
   and its cause were declared.
+- Every dispatched role's artifact reached the coordinator, or the failed
+  dispatch, what changed on any re-dispatch, and the role that ran degraded as
+  a result were all recorded. A role that delivered nothing and was not
+  recorded is a silent termination, not a completed pass.
 - Every gate verdict that ran appears in the final response. Running a gate and
   omitting its verdict is a silent termination, not a completed run.
 - Critic risks were addressed or explicitly accepted.
@@ -246,4 +289,7 @@ In the final response, report:
 - PR URL if opened
 - validation commands and results
 - remaining untracked/unrelated files, if any
-- whether degraded sequential mode was used and every independence guarantee it weakened
+- every role dispatch that delivered no artifact, what changed on any
+  re-dispatch, and which roles ran degraded as a result
+- whether degraded sequential mode covered the whole run, and every
+  independence guarantee that weakened

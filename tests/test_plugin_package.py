@@ -193,6 +193,96 @@ def test_every_selector_failure_kind_terminates_through_the_final_report():
         assert "`error.kind` and exit code when the run produced no plan" in document
 
 
+DISPATCHED_ROLE_SKILLS = (
+    "create-implementation-plan",
+    "critique-plan",
+    "review-diff",
+    "validate-final-design",
+    "validate-final-risks",
+)
+# Which workflow section dispatches each role. A pass that names no artifact
+# cannot be checked for delivery, so the binding is asserted section by section.
+DISPATCH_SECTION_BY_SKILL = {
+    "create-implementation-plan": "### 3. Architect Pass",
+    "critique-plan": "### 4. Critic Pass",
+    "review-diff": "### 7. Reviewer Pass",
+    "validate-final-design": "### 8. Architect and Critic Validation",
+    "validate-final-risks": "### 8. Architect and Critic Validation",
+}
+# Host mechanisms that must never reach a shipped contract: the same files go to
+# Claude, Codex, Gemini, and Antigravity. Bare "Task" is deliberately absent --
+# it would fire on ordinary prose, and a tripwire that cries wolf gets deleted.
+HOST_MECHANISM_TOKENS = ("SendMessage", "subagent_type", 'to: "main"')
+
+
+def _section(document: str, heading: str) -> str:
+    """The flattened text of one section, up to the next heading of its level."""
+
+    level = heading.split(" ", 1)[0]
+    start = document.index(heading) + len(heading)
+    rest = document[start:]
+    end = rest.find(f"\n{level} ")
+    return _flat(rest if end == -1 else rest[:end])
+
+
+def test_the_contract_requires_confirmed_delivery_of_every_role_artifact():
+    # A role that finishes without its output reaching the coordinator is the
+    # dispatch-layer form of the silent termination this contract exists to
+    # prevent: the work is done and then lost. This is a staleness tripwire --
+    # there is no dispatch runtime to exercise, so it can only prove the
+    # contract still states the obligation, not that a coordinator obeys it.
+    skill_root = ROOT / "plugins" / "dev-workflows" / "skills"
+    raw = (skill_root / "implementation-skill" / "SKILL.md").read_text(encoding="utf-8")
+    implementation = _flat(raw)
+    report = _flat((skill_root / "report-result" / "SKILL.md").read_text(encoding="utf-8"))
+
+    artifacts = {SKILL_BY_ID[skill_id].output for skill_id in DISPATCHED_ROLE_SKILLS}
+    # Guards the skill-ID tuple itself: a typo there would empty every loop.
+    assert {"implementation_plan", "review_findings"} <= artifacts
+
+    agent_use = _section(raw, "## Agent Use and Degraded Mode")
+    assert agent_use, "the contract no longer has an Agent Use and Degraded Mode section"
+
+    # Assert inside the sentence carrying each obligation, not anywhere in the
+    # file: every artifact name below already appears in the reporting list, so
+    # a whole-file membership check would pass on a contract that says nothing.
+    assert "Confirm receipt before treating any dispatched pass as complete." in agent_use
+    assert (
+        "without the coordinator holding its artifact is a failed dispatch, not a "
+        "completed pass" in agent_use
+    )
+    assert "Re-dispatch a failed role at most once, and only when something material" in (
+        agent_use
+    )
+    assert "degrade that role alone and keep every other role independent" in agent_use
+    assert "no single agent may hold both sides of a gate pair" in agent_use
+    # The substance floor: an artifact that echoes nothing it judged is not
+    # evidence, so requiring delivery cannot be satisfied by a rubber stamp.
+    assert "echoes the identifiers its skill requires" in agent_use
+    # Host-wide unavailability must keep its own, broader rule.
+    assert "unavailable in the host at all" in agent_use
+
+    # Each dispatching pass names the artifact whose receipt completes it.
+    for skill_id, heading in DISPATCH_SECTION_BY_SKILL.items():
+        section = _section(raw, heading)
+        assert section, heading
+        assert SKILL_BY_ID[skill_id].output in section, (heading, skill_id)
+
+    # Detecting a lost dispatch is worthless if the user is never told.
+    for document in (implementation, report):
+        assert "every role dispatch that delivered no artifact" in document
+        assert "which roles ran degraded as a result" in document
+
+    # Portability: the mechanism is one host's, the contract is four hosts'.
+    shipped = list((ROOT / "plugins").rglob("SKILL.md"))
+    shipped += list((ROOT / "plugins").rglob("agents/*.yaml"))
+    assert len(shipped) > len(DISPATCHED_ROLE_SKILLS), "no shipped contracts found"
+    for path in shipped:
+        text = path.read_text(encoding="utf-8")
+        for token in HOST_MECHANISM_TOKENS:
+            assert token not in text, f"{path.name} names a host mechanism: {token}"
+
+
 def test_the_contract_never_promises_a_document_for_rejected_input():
     # exit 2 comes from argparse and prints nothing on stdout. Listing it under
     # a sentence that promised an `error` document told coordinators to parse a
