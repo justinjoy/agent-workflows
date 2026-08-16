@@ -15,6 +15,11 @@ The plan should identify:
 - test strategy and edge cases
 - atomic implementation units
 
+The plan must name the concrete repository paths it applies to: the files and
+tests each atomic unit touches, including paths it will create. A plan that
+names none was not written against this repository, and no later gate can check
+it against one.
+
 When a coordinator dispatched this skill, producing `implementation_plan` is not
 delivering it: return it the way that dispatch named. A pass that ends without
 the coordinator holding it is a failed dispatch and its work is lost. Under
