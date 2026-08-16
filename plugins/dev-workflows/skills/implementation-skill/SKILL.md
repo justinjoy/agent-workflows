@@ -167,9 +167,9 @@ cross-module code changed.
 Every code change, including documentation-only and trivial changes, selects
 `review-diff`. The Reviewer must not have written the change under review,
 except under whole-workflow degraded sequential mode, where no second agent
-exists and the weakened separation is declared and reported. Give
-it the raw uncommitted diff, candidate path set and digest, and the objective,
-not the Implementer's account. Every gate must identify the same
+exists and the weakened separation is declared and reported. Give it the raw
+uncommitted diff, candidate path set and digest, and the objective, not the
+Implementer's account. Every gate must identify the same
 `approved_candidate_tree` created from the base tree with a temporary index.
 Dispatch it under Agent Use and Degraded Mode: the pass is not complete until
 the coordinator holds `review_findings`.
@@ -265,9 +265,9 @@ run as blocked and report it through `report-result` rather than perform a
 self-review. If independent agents are unavailable in the host at all, there is
 no separation left to protect and the whole remaining workflow drops to
 degraded sequential mode instead, where the coordinator does run every gate and
-declares it. Preserve and use
-every successfully returned raw artifact; if a lost one arrives after the gate
-ran, use what was held at gate time and report the duplicate.
+declares it. Preserve and use every successfully returned raw artifact; if a
+lost one arrives after the gate ran, use what was held at gate time and report
+the duplicate.
 
 Degraded mode weakens independence guarantees. It must not omit review, final
 validation, or commit gates. The final handoff must name every dispatch that
