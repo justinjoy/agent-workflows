@@ -292,10 +292,11 @@ With exactly one independent agent the run continues in single-judge mode: that
 agent holds every judgment gate, so it judges both design and risk at final
 validation. Planning still separates, with the coordinator authoring the plan
 and the agent critiquing it, because the critique is the only pass that ever
-interrogates the plan's quality. The mode surrenders four guarantees and the
-report names all four -- one mind behind both verdicts, risks validated against
-a critique it wrote, both validations reading review findings it wrote, and a
-design that was independently critiqued but not independently authored.
+interrogates the plan's quality. The mode surrenders five guarantees and the
+report names all five -- one mind behind both verdicts, risks validated against
+a critique it wrote, both validations reading review findings it wrote, a design
+that was independently critiqued but not independently authored, and a reviewer
+that had already cleared the plan it reviews against.
 
 The consequence worth stating plainly: a host that can dispatch no independent
 agent can no longer reach a commit through this harness. It still runs, and it
