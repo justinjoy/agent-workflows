@@ -197,8 +197,16 @@ def main(argv: list[str] | None = None) -> int:
     try:
         derivations = derive(args.touches, args.scope, ontology)
     except ValueError as exc:
-        # An undeclared surface or scope is bad input, not a dead runtime.
-        parser.error(str(exc))
+        # An undeclared surface or scope is bad input, not a dead runtime. The
+        # message names the relation to declare in but not the values it
+        # accepts, and a supplied TBox controls how many there are, so point at
+        # the flag that prints them rather than growing the message.
+        #
+        # This decorates every ValueError derive() raises. Today those are
+        # exactly the two vocabulary errors in ontology.derive(); a third kind
+        # would silently acquire a remedy that does not fit, so check here
+        # before adding one.
+        parser.error(f"{exc}; run --print-ontology to list the declared vocabulary")
     except Exception as exc:
         # Loading libwirelog fails here before the selector is ever reached.
         # Routing it to parser.error would exit 2 with empty stdout, which a
