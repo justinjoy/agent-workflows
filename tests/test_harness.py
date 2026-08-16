@@ -321,6 +321,52 @@ def test_rejected_input_exits_two_with_no_document_and_no_record(capsys, tmp_pat
     assert not log.exists()
 
 
+def _declared_harness_errors(root):
+    """Every HarnessError subclass this package itself defines, recursively."""
+
+    for subclass in root.__subclasses__():
+        # Tests define throwaway subclasses to exercise the unmapped path. Only
+        # the ones this package ships are ours to give a kind.
+        if subclass.__module__.startswith("agent_workflows_harness"):
+            yield subclass
+        yield from _declared_harness_errors(subclass)
+
+
+def test_every_harness_error_subclass_declares_the_kind_it_reaches_callers_as():
+    # The kind tripwires are keyed by kind, so none of them fire on a new
+    # HarnessError subclass added without one: it falls through to the generic
+    # handler and is reported as `selector_unavailable`, telling an operator to
+    # check WIRELOG_LIB for a defect in the harness. This is the only guard
+    # pointed at subclass -> kind rather than kind -> contract.
+    declared = set(_declared_harness_errors(HarnessError))
+
+    assert SelectorRuleConflictError in declared, "subclass discovery found nothing"
+    for subclass in declared:
+        kind = cli.KIND_BY_EXCEPTION.get(subclass)
+        assert kind is not None, f"{subclass.__name__} declares no error kind"
+        assert kind in cli.EXIT_BY_KIND, f"{subclass.__name__} maps to an unknown kind"
+
+
+def test_an_unmapped_harness_error_is_not_reported_as_a_dead_runtime(capsys, monkeypatch):
+    class _UnmappedHarnessError(HarnessError):
+        pass
+
+    def _raise(facts):
+        raise _UnmappedHarnessError("rule evaluation exceeded its deadline")
+
+    monkeypatch.setattr(cli, "select_plan", _raise)
+
+    code = cli.main(["--property", "trivial"])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert code == cli.EXIT_HARNESS_ERROR == 5
+    assert code != cli.EXIT_SELECTOR_UNAVAILABLE
+    assert payload["error"]["kind"] == "harness_error"
+    # The whole point: it must not borrow the runtime remedy.
+    assert "WIRELOG_LIB" not in payload["error"]["message"]
+    assert "selected" not in payload
+
+
 def test_every_error_kind_has_its_own_exit_code():
     assert set(cli.EXIT_BY_KIND) == set(cli.MESSAGE_BY_KIND)
     codes = list(cli.EXIT_BY_KIND.values())

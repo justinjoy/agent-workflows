@@ -9,8 +9,8 @@ Produce the final response for the implementation run.
 
 Run this skill on every termination of the run, not only after a successful
 commit. A gate rejection, a blocked commit, an unavailable runtime, a rule
-conflict, or an abandoned unit each still terminates the run and still requires
-this report. A run must never end without one.
+conflict, a harness defect, or an abandoned unit each still terminates the run
+and still requires this report. A run must never end without one.
 
 Report:
 

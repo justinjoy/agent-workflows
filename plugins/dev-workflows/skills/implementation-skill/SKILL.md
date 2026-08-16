@@ -78,10 +78,14 @@ shape of stdout, and never read a failure as an empty plan.
 - exit `4`, `rule_conflict`: two rules disagree about the same skill, so no
   plan is deterministic. Do not fail closed to the non-trivial plan and do not
   proceed. Report the conflict through `report-result` and stop.
+- exit `5`, `harness_error`: the harness failed for a reason it does not
+  classify further. It is a harness defect, not a dead runtime and not bad
+  input. Do not fail closed to the non-trivial plan; report it through
+  `report-result` and stop.
 
-Exits `3` and `4` emit an `error` document carrying a `kind` on stdout; exit
-`2` does not. Every one of these exits terminates the run and still requires
-`report-result`. Producing no plan is never a reason to stop without
+Exits `3`, `4`, and `5` emit an `error` document carrying a `kind` on stdout;
+exit `2` does not. Every one of these exits terminates the run and still
+requires `report-result`. Producing no plan is never a reason to stop without
 responding.
 
 Skill choice is therefore made by explicit facts and Wirelog rules instead of by
