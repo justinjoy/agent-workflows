@@ -121,6 +121,12 @@ usage-error `2`, which still signals rejected input. Exit `2` prints no document
 at all: argparse reports the cause on stderr, so a caller that parses only
 stdout must branch on the exit code to see it.
 
+Exit `0` no longer implies a plan. `--print-ontology` is a successful run that
+prints the active TBox and selects nothing, so a caller branches on the query it
+asked for as well as on the exit code. That document carries no `selected` key
+either, so `payload["selected"]` still fails loudly while
+`payload.get("selected", [])` still reads it as an empty plan.
+
 Use `--decision-log path/to/decisions.jsonl` to append the request facts,
 selected skills, blocked skills, and rule reasons as durable JSON Lines records.
 A run that failed at exit `3`, `4`, or `5` appends an
@@ -128,6 +134,9 @@ A run that failed at exit `3`, `4`, or `5` appends an
 leaves a durable trace. Input
 rejected at exit `2` is reported by argparse before the log is reachable and
 leaves no record, so an absent record is not evidence that no run was attempted.
+A `--print-ontology` run selects nothing, so it has neither record to append; it
+warns on stderr rather than letting a caller who supplied `--decision-log`
+believe a trace was written.
 
 The log is a trace, not the answer. An unwritable log path warns on stderr and
 changes neither the exit code nor the document already written to stdout.
@@ -201,6 +210,34 @@ harness that `billing_ledger` is a persistence surface is one entry in
 `surface_class`, not an edit to the classifier. The document is validated on
 load: terms must be well formed, classes must be declared, `sub_class_of` must
 be acyclic, and mapped properties must be ones the selector supports.
+
+The vocabulary a request may draw on is itself observable. `--print-ontology`
+prints the active TBox and exits `0` without selecting a plan:
+
+```bash
+agent-workflows-harness --print-ontology
+```
+
+The document is the same shape `--ontology` reads, so the same command also
+answers what a supplied file loaded as after validation, which is otherwise
+unobservable:
+
+```json
+{
+  "property_of_class": [["SharedBehavior", "touches_shared_behavior"]],
+  "scope_property": [["one_line", "trivial"]],
+  "skill_class": [["review-diff", "ReviewSkill"]],
+  "sub_class_of": [["AuthSurface", "SharedBehavior"]],
+  "surface_class": [["session_module", "AuthSurface"]]
+}
+```
+
+That example is a subset: the bundled TBox has more rows in every relation.
+Every argument other than `--ontology` is ignored, including `--touches` and
+`--scope` values that would otherwise be rejected -- the caller reaching for
+this flag is usually the one whose name was just refused. An `--ontology` file
+that fails validation still exits `2` and prints nothing, because a document
+that did not load cannot be printed.
 
 The bundled ontology also classifies every registered skill (`ReviewSkill`,
 `TestSkill`, and so on under `ValidationSkill`). The selector rules do not use

@@ -761,3 +761,43 @@ def test_cli_accepts_docs_only_text_about_external_subjects():
         skill["reason"] == "documentation_change_requires_focused_validation"
         for skill in payload["selected"]
     )
+
+
+def test_adding_the_ontology_flag_makes_two_property_abbreviations_ambiguous():
+    # argparse allows abbreviations, so `--p` and `--pr` used to resolve to
+    # `--property` and now match two flags. Recorded rather than discovered:
+    # a behavior change nobody can see is one nobody decided. Note the parser
+    # already shipped an ambiguous abbreviation -- `--t` matches --touches and
+    # --text -- so abbreviation stability was never a property of this CLI, and
+    # allow_abbrev=False would be a strictly larger break.
+    parser = cli._parser()
+    for ambiguous in ("--p", "--pr", "--t"):
+        try:
+            parser.parse_known_args([ambiguous, "trivial"])
+        except SystemExit as exc:
+            assert exc.code == 2, ambiguous
+        else:  # pragma: no cover
+            raise AssertionError(f"{ambiguous} is no longer ambiguous")
+
+    # The unambiguous spellings must keep working.
+    assert parser.parse_known_args(["--prop", "trivial"])[0].property == ["trivial"]
+    assert parser.parse_known_args(["--pri"])[0].print_ontology is True
+
+
+def test_printing_the_ontology_does_not_need_the_wirelog_runtime(capsys, monkeypatch):
+    # Pins the branch placement before derive(): the caller reaching for this
+    # is often the one whose fact was just rejected, and the vocabulary must be
+    # printable without a working runtime.
+    monkeypatch.setitem(sys.modules, "pyrewire", None)
+
+    code = cli.main(["--print-ontology"])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert code == 0
+    assert set(payload) == {
+        "sub_class_of",
+        "surface_class",
+        "skill_class",
+        "property_of_class",
+        "scope_property",
+    }
