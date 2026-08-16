@@ -453,20 +453,34 @@ def test_the_rejection_hint_names_the_tbox_that_did_the_rejecting(tmp_path: Path
         property_of_class=(("BillingSurface", "touches_shared_behavior"),),
         scope_property=(),
     )
-    # A directory with a space: the hint is a command a caller pastes back, and
-    # an unquoted path makes it read a different file or none -- tmp_path alone
-    # never contains a space, so the quoting would go unpinned.
-    directory = tmp_path / "my tbox"
+    assert custom != DEFAULT_ONTOLOGY
+    # A space and an apostrophe: the hint is a command a caller pastes back, and
+    # tmp_path alone carries neither, so quoting and escaping would both go
+    # unpinned. An apostrophe is what separates correct quoting from quoting
+    # that merely happens to be invertible.
+    directory = tmp_path / "o'brien tbox"
     directory.mkdir()
     path = directory / "tbox.json"
     path.write_text(json.dumps(custom.to_dict()), encoding="utf-8")
 
+    # Both vocabulary errors, as the sibling test loops them: the carry-through
+    # rides on one `parser.error` call, and covering only one hides that.
+    for flag, bad in (("--touches", "session_module"), ("--scope", "one_line")):
+        rejected = _run_cli("--ontology", str(path), flag, bad)
+        assert rejected.returncode == 2, flag
+        assert str(path) in rejected.stderr, flag
+
     result = _run_cli("--ontology", str(path), "--touches", "session_module")
 
     assert result.returncode == 2
-    assert f"run --ontology {shlex.quote(str(path))} --print-ontology" in result.stderr
+    # The path, not a particular quoting style: asserting the exact output of
+    # the quoting function would make the expected value the implementation.
+    assert str(path) in result.stderr
+    assert "--print-ontology" in result.stderr
 
-    # Pasting the hint back must reach the same TBox that did the rejecting.
+    # Parsing the hint back must reach the same TBox that did the rejecting.
+    # This reads it the way a POSIX shell would; it is evidence about that
+    # reading, not about every shell the hint might be pasted into.
     hint = result.stderr.strip().splitlines()[-1].split("; ")[-1]
     # removeprefix/removesuffix are no-ops on a mismatch, so a reworded hint
     # would leave the trailing words on the argv, where the positional request
@@ -526,3 +540,25 @@ def test_the_documented_composition_rule_matches_what_the_flag_actually_does(tmp
     assert "`--ontology` and `--text` still apply" in doc
     assert "a supplied `--decision-log` warns on stderr" in doc
     assert "Every argument other than `--ontology` is ignored" not in doc
+def test_a_quoted_path_survives_every_shell_the_hint_may_be_pasted_into():
+    # The paste-back test reads the hint the way a POSIX shell would, so it is
+    # structurally blind to cmd and PowerShell. This pins the emitted shape
+    # against what each of those three actually accepts, which is the only
+    # evidence here that is not shlex round-tripping its own output.
+    plain = "/home/me/tbox.json"
+    assert cli._quote_path(plain) == plain, "a bare-safe path should not be quoted"
+
+    for hostile in (
+        "C:" + chr(92) + "git" + chr(92) + "tbox.json",       # backslashes alone
+        "C:" + chr(92) + "my tbox" + chr(92) + "t.json",      # a space
+        "C:" + chr(92) + "o'brien" + chr(92) + "t.json",      # an apostrophe
+        "C:" + chr(92) + "o'brien tbox" + chr(92) + "t.json",
+    ):
+        quoted = cli._quote_path(hostile)
+        assert quoted.startswith('"') and quoted.endswith('"'), hostile
+        # Double quotes, because cmd treats the POSIX single-quote form as
+        # literal text and PowerShell mis-reads its apostrophe escaping.
+        assert "'\"'\"'" not in quoted, hostile
+        # Backslashes stay literal inside double quotes in all three shells.
+        assert hostile in quoted, hostile
+        assert shlex.split(quoted) == [hostile], hostile

@@ -51,6 +51,8 @@ EXPECTED_ATOMIC_SKILLS = {
 # is deleting the behavior and watching it go red. Deriving a haystack instead
 # of hardcoding it is right, but it moves the failure from loud to silent, so
 # a derived haystack owes a guard that it is non-empty and actually derived.
+
+
 def _json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 

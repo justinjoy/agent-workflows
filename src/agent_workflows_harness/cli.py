@@ -51,6 +51,30 @@ KIND_BY_EXCEPTION = {
 }
 
 
+# Characters a path can carry unquoted in every shell a caller might paste
+# into. A backslash is deliberately absent: bare, POSIX shells consume it, so
+# a Windows path is always quoted even when it looks harmless.
+_BARE_PATH = frozenset(
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@+=:,./-_"
+)
+
+
+def _quote_path(path: str) -> str:
+    """Quote a path so the emitted hint runs in sh, PowerShell, and cmd alike.
+
+    Double quotes rather than `shlex.quote`: measured against all three, the
+    POSIX single-quote form is literal in cmd and mis-escapes an apostrophe in
+    PowerShell, which doubles embedded quotes instead. Double quotes are
+    honoured by all three and leave backslashes literal in each. The cost is
+    that `$` and a backtick stay live under POSIX, which a filesystem path
+    should not be carrying.
+    """
+
+    if path and all(character in _BARE_PATH for character in path):
+        return path
+    return '"' + path.replace('"', '\\"') + '"'
+
+
 def _fail(args: argparse.Namespace, kind: str, cause: str) -> int:
     """Report a run that produced no plan and return its exit code."""
 
@@ -214,11 +238,7 @@ def main(argv: list[str] | None = None) -> int:
         # worse than no hint because it looks authoritative.
         printer = "--print-ontology"
         if args.ontology:
-            # Quoted when it needs to be: an unquoted path with a space makes
-            # the hint unrunnable, and pasting it back reads a different file
-            # or none -- the same failure this hint exists to prevent, one
-            # layer down.
-            printer = f"--ontology {shlex.quote(args.ontology)} --print-ontology"
+            printer = f"--ontology {_quote_path(args.ontology)} --print-ontology"
         parser.error(f"{exc}; run {printer} to list the declared vocabulary")
     except Exception as exc:
         # Loading libwirelog fails here before the selector is ever reached.
