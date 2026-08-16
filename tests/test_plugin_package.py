@@ -199,6 +199,16 @@ def test_every_selector_failure_kind_terminates_through_the_final_report():
 # Membership in this set is what the workflow's own dispatch sentences are
 # cross-checked against.
 DELIVERY_CLAUSE = "is a failed dispatch and its work is lost"
+# Which workflow pass owns each dispatch. Keyed by heading text rather than
+# heading number, so renumbering the workflow does not break it, and required
+# below to equal the set derived from the contract, so it cannot go stale.
+DISPATCHING_PASS_BY_SKILL = {
+    "create-implementation-plan": "Architect Pass",
+    "critique-plan": "Critic Pass",
+    "review-diff": "Reviewer Pass",
+    "validate-final-design": "Architect and Critic Validation",
+    "validate-final-risks": "Architect and Critic Validation",
+}
 # Host mechanisms that must never reach a shipped contract: the same files go to
 # Claude, Codex, Gemini, and Antigravity. Bare "Task" is deliberately absent --
 # it would fire on ordinary prose, and a tripwire that cries wolf gets deleted.
@@ -242,28 +252,49 @@ def _roles_declaring_delivery(skill_root) -> set[str]:
     }
 
 
-def _roles_dispatched_by_the_workflow(raw: str) -> set[str]:
-    """Registry skills the workflow dispatches, read off the contract itself."""
+def _dispatch_sections(raw: str) -> dict[str, set[str]]:
+    """Numbered workflow passes that dispatch, and the roles each one names.
 
-    workflow = _section(raw, "## Workflow")
-    assert workflow, "the contract no longer has a Workflow section"
+    Keyed by heading, so the positional fact survives: which pass dispatches
+    which role. A flat set alone would stop noticing a dispatch sentence that
+    drifted out of its own pass, which is what the removed hand-written
+    heading map used to catch.
+    """
+
+    assert _section(raw, "## Workflow"), "the contract no longer has a Workflow section"
 
     skill_id_by_output = {skill.output: skill.skill_id for skill in SKILLS}
-    dispatched = set()
-    # Scoped to `## Workflow` on purpose. `coordinator holds` also appears in
-    # Agent Use, where it names no artifact today; the scoping is what keeps
-    # that from poisoning the set if an example is ever added there.
+    sections = {}
+    # Numbered `### N.` headings exist only under `## Workflow`. `coordinator
+    # holds` also appears in Agent Use, where it names no artifact today;
+    # scanning passes rather than the whole file keeps that from poisoning the
+    # set if an example is ever added there.
     # The token run stops at the first word that is not a backticked name, so
     # `approved_candidate_tree` in "echoing the ..." is not swallowed and no
     # allowlist is needed -- an allowlist here would be an escape hatch that
     # every future non-artifact token gets appended to.
-    for names in re.findall(
-        r"coordinator holds ((?:`\w+`)(?:(?:,| and) `\w+`)*)", workflow
-    ):
-        for token in re.findall(r"`(\w+)`", names):
-            assert token in skill_id_by_output, f"unknown delivery artifact: {token}"
-            dispatched.add(skill_id_by_output[token])
-    return dispatched
+    for heading in re.findall(r"\n(### \d+\. [^\r\n]+)", raw):
+        skills = set()
+        for names in re.findall(
+            r"coordinator holds ((?:`\w+`)(?:(?:,| and) `\w+`)*)",
+            _section(raw, heading),
+        ):
+            for token in re.findall(r"`(\w+)`", names):
+                assert token in skill_id_by_output, f"unknown delivery artifact: {token}"
+                skills.add(skill_id_by_output[token])
+        if skills:
+            sections[heading] = skills
+    return sections
+
+
+def _roles_dispatched_by_the_workflow(raw: str) -> set[str]:
+    """Registry skills the workflow dispatches, read off the contract itself."""
+
+    return {
+        skill_id
+        for skills in _dispatch_sections(raw).values()
+        for skill_id in skills
+    }
 
 
 def test_the_workflow_and_the_role_skills_agree_on_who_is_dispatched():
@@ -275,7 +306,10 @@ def test_the_workflow_and_the_role_skills_agree_on_who_is_dispatched():
     # make the check a tautology that can only shrink in silence.
     #
     # Residual hole, unclosable without a registry field: a new dispatched role
-    # with neither the contract sentence nor the clause is invisible to both.
+    # with no matching `coordinator holds \`x\`` sentence AND no clause in its
+    # own skill is invisible to both. A paraphrased sentence counts as absent
+    # here, so the escape needs two independent omissions -- copying a sibling
+    # role skill, which is how these get written, grows one side and fails.
     skill_root = ROOT / "plugins" / "dev-workflows" / "skills"
     raw = (skill_root / "implementation-skill" / "SKILL.md").read_text(encoding="utf-8")
 
@@ -284,6 +318,25 @@ def test_the_workflow_and_the_role_skills_agree_on_who_is_dispatched():
 
     assert declaring, "no role skill carries the delivery clause"
     assert dispatched, "the workflow names no dispatched role"
+    # Membership alone is circular once both sides are derived, and a count of
+    # dispatching passes is too weak -- a sentence moving between two passes
+    # that both already dispatch keeps the count. Pin which pass owns which
+    # dispatch instead. This map is hand-written, but unlike the two it
+    # replaced it cannot drift silently: the assertion below requires it to
+    # equal the derived set. Keyed by heading text, not number, so renumbering
+    # the workflow does not break it.
+    sections = _dispatch_sections(raw)
+    assert set(DISPATCHING_PASS_BY_SKILL) == dispatched, (
+        f"the recorded dispatching passes {sorted(DISPATCHING_PASS_BY_SKILL)} do not "
+        f"match the roles the workflow dispatches {sorted(dispatched)}"
+    )
+    for skill_id, pass_name in DISPATCHING_PASS_BY_SKILL.items():
+        owning = [heading for heading in sections if pass_name in heading]
+        assert len(owning) == 1, (
+            f"{skill_id} should be dispatched by exactly one {pass_name!r}, "
+            f"found {owning} among {sorted(h.strip() for h in sections)}"
+        )
+        assert skill_id in sections[owning[0]], (skill_id, owning[0].strip())
     assert declaring == dispatched, (
         f"role skills declaring delivery {sorted(declaring)} do not match the roles "
         f"the workflow dispatches {sorted(dispatched)}"
@@ -367,9 +420,10 @@ def test_the_contract_requires_confirmed_delivery_of_every_role_artifact():
         contract = _flat((skill_root / skill_id / "SKILL.md").read_text(encoding="utf-8"))
         assert phrase in contract, skill_id
 
-    # The per-section artifact binding that used to sit here is now what the
-    # derivation reads, so asserting it would be a tautology. It is checked
-    # instead by test_the_workflow_and_the_role_skills_agree_on_who_is_dispatched.
+    # Re-asserting that a pass names its own artifact would be circular here --
+    # the derivation reads exactly those sentences. The non-circular half, that
+    # the sentences stay spread across the passes that own them, is asserted by
+    # test_the_workflow_and_the_role_skills_agree_on_who_is_dispatched.
 
     # Detecting a lost dispatch is worthless if the user is never told, and a
     # report with no producer per artifact reads identically whether the gate
