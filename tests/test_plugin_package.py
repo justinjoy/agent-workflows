@@ -375,7 +375,7 @@ def test_the_contract_requires_confirmed_delivery_of_every_role_artifact():
     for document in (implementation, report):
         assert "every role dispatch that delivered no artifact" in document
         assert "which roles ran degraded as a result" in document
-        assert "which agent produced each gate artifact" in document
+        assert "which agent produced each role artifact" in document
         assert "`coordinator, degraded`" in document
 
     # Portability: the mechanism is one host's, the contract is four hosts'.
