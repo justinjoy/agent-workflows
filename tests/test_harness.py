@@ -24,6 +24,24 @@ from agent_workflows_harness.selector import (
 
 
 ROOT = Path(__file__).resolve().parents[1]
+# Hand-written on purpose. Deriving these from SKILLS would restate
+# registry.py's own `index + 1` and pass under any reordering -- which is the
+# change this pins against, since selector.py writes these codes as literals in
+# RULES and re-pointing one of them is silent.
+PINNED_SKILL_CODES = {
+    "inspect-repository": 1,
+    "classify-change-risk": 2,
+    "create-implementation-plan": 3,
+    "critique-plan": 4,
+    "implement-atomic-change": 5,
+    "run-focused-tests": 6,
+    "run-broad-tests": 7,
+    "review-diff": 8,
+    "validate-final-design": 9,
+    "validate-final-risks": 10,
+    "report-result": 11,
+    "commit-atomic-change": 12,
+}
 
 
 def _ids(facts: RequestFacts) -> list[str]:
@@ -197,8 +215,10 @@ def test_commit_hint_is_compatible_but_commit_is_always_selected():
 
 
 def test_new_skill_keeps_existing_wirelog_codes_stable():
-    assert SKILL_CODE_BY_ID["report-result"] == 11
-    assert SKILL_CODE_BY_ID["commit-atomic-change"] == 12
+    # Equality, not a subset: a skill appended without a pin here fails rather
+    # than passing unpinned, and one inserted mid-tuple shifts every later code.
+    # Only 11 and 12 were pinned before, which left codes 1-10 free to shift.
+    assert SKILL_CODE_BY_ID == PINNED_SKILL_CODES
     assert SKILL_BY_ID["commit-atomic-change"].order == 105
     assert SKILL_BY_ID["report-result"].order == 110
 
