@@ -224,6 +224,21 @@ never received was not delivered, and a verdict that echoes nothing it judged
 is not evidence the role saw the candidate. Requiring an artifact without
 requiring that substance only trades a silent loss for a rubber stamp.
 
+Every dispatched role's skill must therefore require at least one such
+identifier: a validation gate echoes the `approved_candidate_tree` it judged, a
+plan names the repository paths it was written against, a critique names the
+plan elements it examined and what it examined them for. None of these is
+unforgeable, because the role is handed the inputs they come from. Their
+purpose is to make an empty artifact visibly empty in the final report, not to
+authenticate the work. Do not build anything on the stronger reading.
+
+That is also why a gate that returns a verdict is held to a different standard
+than a pass that returns a proposal. An invented path in a plan is a plan
+defect, and the critique and the review still run against it. An invented
+citation attached to an `approved` verdict is terminal: nothing downstream
+re-checks it. Require identifiers a role already holds; do not require a gate
+to produce new evidence it would be tempted to fabricate.
+
 Artifacts do not come back the same way in every host. Identify how a
 dispatched role's output actually reaches the coordinator before the first
 dispatch, and name it in every dispatch prompt together with the artifact the

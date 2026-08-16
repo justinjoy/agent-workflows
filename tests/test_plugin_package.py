@@ -342,6 +342,28 @@ def test_the_contract_requires_confirmed_delivery_of_every_role_artifact():
     assert "echoes the identifiers its skill requires" in agent_use
     # Host-wide unavailability must keep its own, broader rule.
     assert "unavailable in the host at all" in agent_use
+    # The floor is only as strong as what each role skill mandates, so the
+    # contract has to require that every dispatched role mandates something.
+    assert "must therefore require at least one such identifier" in agent_use
+    # And it must say plainly what these floors are not, or a later reader
+    # mistakes them for authentication and builds on that.
+    assert "None of these is unforgeable" in agent_use
+    assert "not to authenticate the work" in agent_use
+
+    # Each dispatched role skill must actually carry an identifier requirement.
+    # Semantic checking is impossible -- the identifier differs per role -- so
+    # this pins the per-role floor sentence and nothing stronger.
+    floors = {
+        "create-implementation-plan": "must name the concrete repository paths",
+        "critique-plan": "must name the plan elements it examined",
+        "review-diff": "content digest reviewed",
+        "validate-final-design": "`approved_candidate_tree` ID being judged",
+        "validate-final-risks": "`approved_candidate_tree` ID being judged",
+    }
+    assert set(floors) == dispatched, "a dispatched role has no recorded substance floor"
+    for skill_id, phrase in floors.items():
+        contract = _flat((skill_root / skill_id / "SKILL.md").read_text(encoding="utf-8"))
+        assert phrase in contract, skill_id
 
     # The per-section artifact binding that used to sit here is now what the
     # derivation reads, so asserting it would be a tautology. It is checked
