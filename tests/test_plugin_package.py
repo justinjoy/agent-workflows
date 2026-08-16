@@ -10,7 +10,7 @@ import zipfile
 from pathlib import Path
 
 from agent_workflows_harness import cli
-from agent_workflows_harness.registry import SKILL_BY_ID
+from agent_workflows_harness.registry import SKILL_BY_ID, SKILLS
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -193,22 +193,10 @@ def test_every_selector_failure_kind_terminates_through_the_final_report():
         assert "`error.kind` and exit code when the run produced no plan" in document
 
 
-DISPATCHED_ROLE_SKILLS = (
-    "create-implementation-plan",
-    "critique-plan",
-    "review-diff",
-    "validate-final-design",
-    "validate-final-risks",
-)
-# Which workflow section dispatches each role. A pass that names no artifact
-# cannot be checked for delivery, so the binding is asserted section by section.
-DISPATCH_SECTION_BY_SKILL = {
-    "create-implementation-plan": "### 3. Architect Pass",
-    "critique-plan": "### 4. Critic Pass",
-    "review-diff": "### 7. Reviewer Pass",
-    "validate-final-design": "### 8. Architect and Critic Validation",
-    "validate-final-risks": "### 8. Architect and Critic Validation",
-}
+# The delivery clause every dispatched role skill carries, generic across roles.
+# Membership in this set is what the workflow's own dispatch sentences are
+# cross-checked against.
+DELIVERY_CLAUSE = "is a failed dispatch and its work is lost"
 # Host mechanisms that must never reach a shipped contract: the same files go to
 # Claude, Codex, Gemini, and Antigravity. Bare "Task" is deliberately absent --
 # it would fire on ordinary prose, and a tripwire that cries wolf gets deleted.
@@ -240,6 +228,66 @@ def _section(document: str, heading: str) -> str:
     return _flat(rest[: min(stops)] if stops else rest)
 
 
+def _roles_declaring_delivery(skill_root) -> set[str]:
+    """Registry skills whose own contract carries the delivery clause."""
+
+    return {
+        skill_id
+        for skill_id in SKILL_BY_ID
+        if (skill_root / skill_id / "SKILL.md").is_file()
+        and DELIVERY_CLAUSE
+        in _flat((skill_root / skill_id / "SKILL.md").read_text(encoding="utf-8"))
+    }
+
+
+def _roles_dispatched_by_the_workflow(raw: str) -> set[str]:
+    """Registry skills the workflow dispatches, read off the contract itself."""
+
+    workflow = _section(raw, "## Workflow")
+    assert workflow, "the contract no longer has a Workflow section"
+
+    skill_id_by_output = {skill.output: skill.skill_id for skill in SKILLS}
+    dispatched = set()
+    # Scoped to `## Workflow` on purpose. `coordinator holds` also appears in
+    # Agent Use, where it names no artifact today; the scoping is what keeps
+    # that from poisoning the set if an example is ever added there.
+    # The token run stops at the first word that is not a backticked name, so
+    # `approved_candidate_tree` in "echoing the ..." is not swallowed and no
+    # allowlist is needed -- an allowlist here would be an escape hatch that
+    # every future non-artifact token gets appended to.
+    for names in re.findall(
+        r"coordinator holds ((?:`\w+`)(?:(?:,| and) `\w+`)*)", workflow
+    ):
+        for token in re.findall(r"`(\w+)`", names):
+            assert token in skill_id_by_output, f"unknown delivery artifact: {token}"
+            dispatched.add(skill_id_by_output[token])
+    return dispatched
+
+
+def test_the_workflow_and_the_role_skills_agree_on_who_is_dispatched():
+    # Two independently maintained lists used to encode this, so a role could be
+    # added to one and missed by the other and nothing failed. Derive both sides
+    # and require them equal: rewording a dispatch sentence shrinks one side,
+    # adding a role skill clause without a dispatch sentence grows the other,
+    # and either fails loudly. Deriving one side FROM the other would instead
+    # make the check a tautology that can only shrink in silence.
+    #
+    # Residual hole, unclosable without a registry field: a new dispatched role
+    # with neither the contract sentence nor the clause is invisible to both.
+    skill_root = ROOT / "plugins" / "dev-workflows" / "skills"
+    raw = (skill_root / "implementation-skill" / "SKILL.md").read_text(encoding="utf-8")
+
+    declaring = _roles_declaring_delivery(skill_root)
+    dispatched = _roles_dispatched_by_the_workflow(raw)
+
+    assert declaring, "no role skill carries the delivery clause"
+    assert dispatched, "the workflow names no dispatched role"
+    assert declaring == dispatched, (
+        f"role skills declaring delivery {sorted(declaring)} do not match the roles "
+        f"the workflow dispatches {sorted(dispatched)}"
+    )
+
+
 def test_section_slicing_stops_at_the_next_heading_of_the_same_level_or_above():
     document = "## A\nalpha\n### A1\nbeta\n## B\ngamma\n"
 
@@ -261,8 +309,9 @@ def test_the_contract_requires_confirmed_delivery_of_every_role_artifact():
     implementation = _flat(raw)
     report = _flat((skill_root / "report-result" / "SKILL.md").read_text(encoding="utf-8"))
 
-    artifacts = {SKILL_BY_ID[skill_id].output for skill_id in DISPATCHED_ROLE_SKILLS}
-    # Guards the skill-ID tuple itself: a typo there would empty every loop.
+    dispatched = _roles_dispatched_by_the_workflow(raw)
+    artifacts = {SKILL_BY_ID[skill_id].output for skill_id in dispatched}
+    # Guards the derivation itself: a broken regex would empty every loop below.
     assert {"implementation_plan", "review_findings"} <= artifacts
 
     agent_use = _section(raw, "## Agent Use and Degraded Mode")
@@ -294,11 +343,9 @@ def test_the_contract_requires_confirmed_delivery_of_every_role_artifact():
     # Host-wide unavailability must keep its own, broader rule.
     assert "unavailable in the host at all" in agent_use
 
-    # Each dispatching pass names the artifact whose receipt completes it.
-    for skill_id, heading in DISPATCH_SECTION_BY_SKILL.items():
-        section = _section(raw, heading)
-        assert section, heading
-        assert SKILL_BY_ID[skill_id].output in section, (heading, skill_id)
+    # The per-section artifact binding that used to sit here is now what the
+    # derivation reads, so asserting it would be a tautology. It is checked
+    # instead by test_the_workflow_and_the_role_skills_agree_on_who_is_dispatched.
 
     # Detecting a lost dispatch is worthless if the user is never told, and a
     # report with no producer per artifact reads identically whether the gate
@@ -312,7 +359,7 @@ def test_the_contract_requires_confirmed_delivery_of_every_role_artifact():
     # Portability: the mechanism is one host's, the contract is four hosts'.
     shipped = list((ROOT / "plugins").rglob("SKILL.md"))
     shipped += list((ROOT / "plugins").rglob("agents/*.yaml"))
-    assert len(shipped) > len(DISPATCHED_ROLE_SKILLS), "no shipped contracts found"
+    assert len(shipped) > len(dispatched), "no shipped contracts found"
     for path in shipped:
         text = path.read_text(encoding="utf-8")
         for token in HOST_MECHANISM_TOKENS:
@@ -323,11 +370,15 @@ def test_every_dispatched_role_skill_states_that_producing_is_not_delivering():
     # Agent Use binds the coordinator, which is the side that did not fail. A
     # dispatched role reads only its own atomic skill, and these skills are also
     # invocable directly, so the clause is conditioned on being dispatched
-    # rather than asserting a coordinator always exists. Derived from the
-    # registry so adding a dispatched role without the clause fails here.
+    # rather than asserting a coordinator always exists.
+    #
+    # Iterates the roles the workflow says it dispatches, and asserts the
+    # artifact-specific wording -- which is stricter than the generic clause the
+    # dispatched-set agreement test matches on, so this is not a tautology.
     skill_root = ROOT / "plugins" / "dev-workflows" / "skills"
+    raw = (skill_root / "implementation-skill" / "SKILL.md").read_text(encoding="utf-8")
 
-    for skill_id in DISPATCHED_ROLE_SKILLS:
+    for skill_id in sorted(_roles_dispatched_by_the_workflow(raw)):
         contract = _flat((skill_root / skill_id / "SKILL.md").read_text(encoding="utf-8"))
         artifact = SKILL_BY_ID[skill_id].output
         assert (
