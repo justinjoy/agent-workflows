@@ -8,13 +8,14 @@ description: Atomic implementation skill that reports selected skills, validatio
 Produce the final response for the implementation run.
 
 Run this skill on every termination of the run, not only after a successful
-commit. A gate rejection, a blocked commit, an unavailable runtime, or an
-abandoned unit each still terminates the run and still requires this report. A
-run must never end without one.
+commit. A gate rejection, a blocked commit, an unavailable runtime, a rule
+conflict, or an abandoned unit each still terminates the run and still requires
+this report. A run must never end without one.
 
 Report:
 
-- selected skill plan, plus blocked skills and their rule reasons
+- selected skill plan, plus blocked skills and their rule reasons, or the
+  selector `error.kind` and exit code when the run produced no plan
 - `implementation_plan` summary and `critique_findings` when those skills were
   selected
 - `review_findings`

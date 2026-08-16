@@ -9,16 +9,37 @@ from .models import RequestFacts
 from .decision_log import append_decision_record, append_failure_record
 from .ontology import derive, load_ontology
 from .serialization import plan_to_dict
-from .selector import select_plan
+from .selector import SelectorRuleConflictError, select_plan
 
 
 # Distinct from argparse's usage-error 2, so a caller can tell a dead runtime
-# from bad input.
+# from bad input, and a rule defect from either.
 EXIT_SELECTOR_UNAVAILABLE = 3
+EXIT_RULE_CONFLICT = 4
 RUNTIME_MESSAGE = (
     "PyreWire/Wirelog runtime unavailable. Ensure pyrewire is installed and "
     "WIRELOG_LIB points to libwirelog."
 )
+CONFLICT_MESSAGE = (
+    "Wirelog rules disagree about the same skill. The plan is not a "
+    "deterministic function of the request facts; fix the rules."
+)
+# One table so a kind and its exit code cannot drift apart.
+EXIT_BY_KIND = {
+    "selector_unavailable": EXIT_SELECTOR_UNAVAILABLE,
+    "rule_conflict": EXIT_RULE_CONFLICT,
+}
+MESSAGE_BY_KIND = {
+    "selector_unavailable": RUNTIME_MESSAGE,
+    "rule_conflict": CONFLICT_MESSAGE,
+}
+
+
+def _fail(args: argparse.Namespace, kind: str, cause: str) -> int:
+    """Report a run that produced no plan and return its exit code."""
+
+    _emit_error(args, kind, MESSAGE_BY_KIND[kind], cause)
+    return EXIT_BY_KIND[kind]
 
 
 def _emit_error(args: argparse.Namespace, kind: str, message: str, cause: str) -> None:
@@ -127,8 +148,7 @@ def main(argv: list[str] | None = None) -> int:
         # Loading libwirelog fails here before the selector is ever reached.
         # Routing it to parser.error would exit 2 with empty stdout, which a
         # caller reads as "no plan" rather than "no runtime".
-        _emit_error(args, "selector_unavailable", RUNTIME_MESSAGE, str(exc))
-        return EXIT_SELECTOR_UNAVAILABLE
+        return _fail(args, "selector_unavailable", str(exc))
 
     try:
         inferred = {item.request_property for item in derivations}
@@ -147,9 +167,12 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         plan = select_plan(facts)
+    except SelectorRuleConflictError as exc:
+        # A rule defect is not a dead runtime, and it must not be reported as
+        # one: the caller's remedy is to fix the rules, not the environment.
+        return _fail(args, "rule_conflict", str(exc))
     except Exception as exc:
-        _emit_error(args, "selector_unavailable", RUNTIME_MESSAGE, str(exc))
-        return EXIT_SELECTOR_UNAVAILABLE
+        return _fail(args, "selector_unavailable", str(exc))
 
     # Print the plan before recording it, so an unwritable log cannot suppress
     # a plan the selector already computed.
