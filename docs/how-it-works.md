@@ -61,8 +61,8 @@ as contradictory input. Requests with no risk or documentation facts fail
 closed to `non_trivial`.
 
 When the selector cannot run at all, the command emits an error document on
-stdout instead of a plan, keeps the human-readable cause on stderr, and exits
-with `3`:
+stdout instead of a plan, keeps the human-readable cause on stderr, and uses
+exit `3`:
 
 ```json
 {
@@ -80,9 +80,28 @@ In `--text` mode the same failure prints one line instead:
 error: selector_unavailable # No module named 'pyrewire'
 ```
 
-The document deliberately carries no `selected` key, so a caller cannot read a
-dead runtime as an empty plan. Exit `3` is distinct from argparse's usage-error
-`2`, which still signals rejected input.
+Two Wirelog rules that disagree about the same skill are the other way a run
+produces no plan. A plan must be a deterministic function of the request facts,
+so the harness fails closed at exit `4` rather than keeping whichever row the
+relation happened to yield last. The remedy is to fix the rules, not the
+environment, so it is never reported as an unavailable runtime:
+
+```json
+{
+  "error": {
+    "kind": "rule_conflict",
+    "message": "Wirelog rules disagree about the same skill. The plan is not a deterministic function of the request facts; fix the rules.",
+    "cause": "selected rules disagree about the same skill: run-focused-tests: (60, 6), (60, 12)"
+  }
+}
+```
+
+An error document deliberately carries no `selected` key, so a caller that
+reads `payload["selected"]` fails loudly instead of treating a failure as an
+empty plan. A caller that defaults the key instead, such as
+`payload.get("selected", [])`, defeats that and must branch on the exit code or
+on `error.kind`. Exits `3` and `4` are both distinct from argparse's
+usage-error `2`, which still signals rejected input.
 
 Use `--decision-log path/to/decisions.jsonl` to append the request facts,
 selected skills, blocked skills, and rule reasons as durable JSON Lines records.

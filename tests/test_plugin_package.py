@@ -8,10 +8,18 @@ import tomllib
 import zipfile
 from pathlib import Path
 
+from agent_workflows_harness import cli
 from agent_workflows_harness.registry import SKILL_BY_ID
 
 
 ROOT = Path(__file__).resolve().parents[1]
+# The prose each selector failure kind uses in the termination contract. Kept
+# beside the kinds themselves so a new kind cannot be added without deciding how
+# a coordinator is told to end that run.
+TERMINATION_PHRASE_BY_KIND = {
+    "selector_unavailable": "an unavailable runtime",
+    "rule_conflict": "a rule conflict",
+}
 EXPECTED_ATOMIC_SKILLS = {
     "classify-change-risk",
     "commit-atomic-change",
@@ -141,6 +149,32 @@ def test_gate_outcomes_must_reach_the_final_report():
         contract = _flat((skill_root / skill_id / "SKILL.md").read_text(encoding="utf-8"))
         assert "`verdict` of `approved` or `blocked`" in contract
         assert "it never ends the run silently" in contract
+
+
+def test_every_selector_failure_kind_terminates_through_the_final_report():
+    # The idle failure mode is a run that acts and then answers nothing. A
+    # selector exit that yields no plan is the cheapest way to reach it, so
+    # every such exit must be documented as a termination that still reports.
+    skill_root = ROOT / "plugins" / "dev-workflows" / "skills"
+    implementation = _flat(
+        (skill_root / "implementation-skill" / "SKILL.md").read_text(encoding="utf-8")
+    )
+    report = _flat((skill_root / "report-result" / "SKILL.md").read_text(encoding="utf-8"))
+
+    # Adding a kind to the CLI without a termination phrase fails here first.
+    assert set(TERMINATION_PHRASE_BY_KIND) == set(cli.EXIT_BY_KIND)
+
+    for kind, phrase in TERMINATION_PHRASE_BY_KIND.items():
+        assert f"exit `{cli.EXIT_BY_KIND[kind]}`, `{kind}`" in implementation, kind
+        for document in (implementation, report):
+            assert phrase in document, (kind, phrase)
+
+    assert "Report the conflict through `report-result` and stop." in implementation
+    assert "Producing no plan is never a reason to stop without responding." in (
+        implementation
+    )
+    for document in (implementation, report):
+        assert "`error.kind` and exit code when the run produced no plan" in document
 
 
 def test_provider_versions_follow_release_policy():

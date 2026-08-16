@@ -9,20 +9,29 @@ from .ontology import (
     derived_properties,
     load_ontology,
 )
-from .selector import select_plan, select_skills
+from .selector import (
+    HarnessError,
+    SelectorRuleConflictError,
+    plan_from_rows,
+    select_plan,
+    select_skills,
+)
 
 __all__ = [
     "BlockedSkill",
     "DEFAULT_ONTOLOGY",
     "Derivation",
+    "HarnessError",
     "Ontology",
     "RequestFacts",
     "SelectedSkill",
+    "SelectorRuleConflictError",
     "SkillDefinition",
     "SkillPlan",
     "derive",
     "derived_properties",
     "load_ontology",
+    "plan_from_rows",
     "select_plan",
     "select_skills",
 ]

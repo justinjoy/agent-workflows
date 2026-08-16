@@ -63,9 +63,23 @@ unavailable merely because the bare command is absent from `PATH`; try the
 remaining installed forms first. Do not install dependencies or rewrite the
 host environment implicitly.
 
-The command emits a machine-readable JSON plan containing request facts,
-selected skills, blocked skills, and rule reasons. Add
+On success the command emits a machine-readable JSON plan containing request
+facts, selected skills, blocked skills, and rule reasons, and exits `0`. Add
 `--decision-log path/to/decisions.jsonl` to append a durable selection record.
+
+When it produces no plan it emits an `error` document with a `kind` instead,
+and the remedy differs by kind. Do not read a failure as an empty plan.
+
+- exit `2`: rejected input. Fix the facts and run the selector again.
+- exit `3`, `selector_unavailable`: the Wirelog runtime could not run. Fail
+  closed as described below.
+- exit `4`, `rule_conflict`: two rules disagree about the same skill, so no
+  plan is deterministic. Do not fail closed to the non-trivial plan and do not
+  proceed. Report the conflict through `report-result` and stop.
+
+Every one of these exits terminates the run and still requires `report-result`.
+Producing no plan is never a reason to stop without responding.
+
 Skill choice is therefore made by explicit facts and Wirelog rules instead of by
 free-form LLM tool selection.
 
@@ -173,8 +187,9 @@ amending history, and verify the commit tree matches the approved tree.
 For multiple atomic units, repeat implementation through commit for each unit.
 
 Run `report-result` once on every termination of the run, not only after a
-successful commit. A blocking gate verdict, an unavailable runtime, or an
-abandoned unit still terminates the run and still requires the report.
+successful commit. A blocking gate verdict, an unavailable runtime, a rule
+conflict, or an abandoned unit still terminates the run and still requires the
+report.
 
 ## Agent Use and Degraded Mode
 
@@ -195,7 +210,8 @@ separations were weakened and why.
 Before final response, verify:
 
 - The Wirelog selector ran and emitted a plan, or runtime unavailability was
-  declared with the fail-closed plan.
+  declared with the fail-closed plan, or a rule conflict was reported and the
+  run stopped without editing.
 - The final response reports selected atomic skills and rule reasons.
 - Independent Architect and Critic passes ran when selected, or degraded mode
   and its cause were declared.
@@ -212,7 +228,8 @@ Before final response, verify:
 
 In the final response, report:
 
-- selected skill plan, plus blocked skills and their rule reasons
+- selected skill plan, plus blocked skills and their rule reasons, or the
+  selector `error.kind` and exit code when the run produced no plan
 - `implementation_plan` summary and `critique_findings` when those skills were selected
 - `review_findings`
 - `architect_validation` and `critic_validation`, each with its explicit `verdict`

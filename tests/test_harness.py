@@ -13,7 +13,14 @@ from agent_workflows_harness.facts import classify_request
 from agent_workflows_harness.models import RequestFacts
 from agent_workflows_harness.ontology import derive
 from agent_workflows_harness.registry import SKILL_BY_ID, SKILL_CODE_BY_ID
-from agent_workflows_harness.selector import build_program, select_plan, select_skills
+from agent_workflows_harness.selector import (
+    HarnessError,
+    SelectorRuleConflictError,
+    build_program,
+    plan_from_rows,
+    select_plan,
+    select_skills,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -249,6 +256,60 @@ def test_every_change_uses_exact_review_consensus_commit_tail():
         assert _steps(RequestFacts.from_properties(properties)) == prefix + common_tail
 
 
+def test_plan_from_rows_collapses_identical_rows_but_rejects_disagreeing_ones():
+    facts = RequestFacts.from_properties({"trivial"})
+    # Identical rows are a set semantics artifact, not a conflict.
+    collapsed = plan_from_rows(facts, [(60, 6, 6), (60, 6, 6)], [])
+
+    assert [(item.order, item.skill_id, item.reason) for item in collapsed.selected] == [
+        (60, "run-focused-tests", "code_change_requires_focused_validation")
+    ]
+
+    for selected_rows, blocked_rows, expected in (
+        ([(60, 6, 6), (60, 6, 12)], [], "run-focused-tests: (60, 6), (60, 12)"),
+        ([], [(3, 101), (3, 102)], "create-implementation-plan: (101,), (102,)"),
+    ):
+        try:
+            plan_from_rows(facts, selected_rows, blocked_rows)
+        except SelectorRuleConflictError as exc:
+            assert expected in str(exc)
+        else:  # pragma: no cover
+            raise AssertionError(f"expected a conflict for {selected_rows or blocked_rows}")
+
+
+def test_a_rule_conflict_is_not_reported_as_a_dead_runtime(capsys, monkeypatch):
+    def _conflict(facts):
+        raise SelectorRuleConflictError("selected rules disagree: run-focused-tests")
+
+    monkeypatch.setattr(cli, "select_plan", _conflict)
+
+    code = cli.main(["--property", "trivial"])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert code == cli.EXIT_RULE_CONFLICT == 4
+    assert code != cli.EXIT_SELECTOR_UNAVAILABLE
+    assert payload["error"]["kind"] == "rule_conflict"
+    assert payload["error"]["message"] == cli.CONFLICT_MESSAGE
+    assert "selected" not in payload
+
+
+def test_selector_rule_conflict_is_not_an_input_error():
+    # `ValueError` is how this package reports caller input errors: it is what
+    # RequestFacts raises and what cli.main turns into argparse's exit 2. A
+    # rule defect is not a caller input error, so any caller catching
+    # ValueError to detect bad facts must not catch it too.
+    assert not issubclass(SelectorRuleConflictError, ValueError)
+    assert issubclass(SelectorRuleConflictError, HarnessError)
+
+
+def test_every_error_kind_has_its_own_exit_code():
+    assert set(cli.EXIT_BY_KIND) == set(cli.MESSAGE_BY_KIND)
+    codes = list(cli.EXIT_BY_KIND.values())
+    assert len(set(codes)) == len(codes)
+    # 0 is success, 1 is an unhandled crash, 2 is argparse's usage error.
+    assert min(codes) > 2
+
+
 def test_request_facts_reject_source_breaking_or_unknown_values():
     for properties in ({'bad"fact'}, {"unknown"}, {"line\nbreak"}):
         try:
@@ -410,36 +471,33 @@ def test_cli_reports_selector_failure_on_stdout_as_json(capsys, monkeypatch, tmp
 
 def test_docs_describe_the_failure_contract_the_cli_emits():
     doc = (ROOT / "docs" / "how-it-works.md").read_text(encoding="utf-8")
-    # Parse the documented example rather than grepping for one literal, so no
-    # field of the published contract can drift unnoticed.
-    # Not every fenced json block is one document: the decision log is JSON
-    # Lines. Parse only the candidates, then select on parsed shape.
-    candidates = [
-        block
-        for block in re.findall(r"```json\n(.*?)\n```", doc, re.DOTALL)
-        if '"error"' in block
-    ]
-    documented = [
-        parsed for parsed in map(json.loads, candidates) if set(parsed) == {"error"}
-    ]
+    # Parse the documented examples rather than grepping for literals, so no
+    # field of the published contract can drift unnoticed. Not every fenced
+    # json block is a whole document -- one is a bare `"derived": [...]`
+    # fragment -- so skip what does not parse, then select error contracts by
+    # shape and index them by kind.
+    documented = {}
+    for block in re.findall(r"```json\n(.*?)\n```", doc, re.DOTALL):
+        try:
+            parsed = json.loads(block)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(parsed, dict) and set(parsed) == {"error"}:
+            documented[parsed["error"].get("kind")] = parsed["error"]
 
-    assert len(documented) == 1, (
-        f"expected exactly one documented error contract in a ```json fence, "
-        f"found {len(documented)} among {len(candidates)} candidate blocks"
+    assert set(documented) == set(cli.MESSAGE_BY_KIND), (
+        f"documented error kinds {sorted(documented)} do not match the kinds "
+        f"the CLI can emit {sorted(cli.MESSAGE_BY_KIND)}"
     )
-    assert documented[0] == {
-        "error": {
-            "kind": "selector_unavailable",
-            "message": cli.RUNTIME_MESSAGE,
-            "cause": "No module named 'pyrewire'",
-        }
-    }
+    # Collapse whitespace so a paragraph reflow cannot fail the prose claims.
+    flat = " ".join(doc.split())
+    for kind, message in cli.MESSAGE_BY_KIND.items():
+        assert set(documented[kind]) == {"kind", "message", "cause"}
+        assert documented[kind]["message"] == message
+        assert f"exit `{cli.EXIT_BY_KIND[kind]}`" in flat, kind
     # Matched literally: this line sits in a fenced block whose exact shape is
     # itself the contract, so a reflow there is a documentation defect.
     assert "error: selector_unavailable # " in doc
-    # Collapse whitespace so a paragraph reflow cannot fail the prose claims.
-    flat = " ".join(doc.split())
-    assert f"exits with `{cli.EXIT_SELECTOR_UNAVAILABLE}`" in flat
     assert "agent_workflow.skill_plan_failed" in flat
 
 
