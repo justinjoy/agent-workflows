@@ -25,6 +25,9 @@ Report:
 - every atomic commit hash, subject, committed path set, and approved tree or
   diff digest
 - pull request URL when applicable
+- which agent produced each gate artifact, or `coordinator, degraded` when the
+  coordinator produced it, so a gate that never ran independently cannot be
+  reported as one that did
 - every role dispatch that delivered no artifact, what changed on any
   re-dispatch, and which roles ran degraded as a result
 - whether degraded sequential mode covered the whole run, and every
