@@ -329,3 +329,30 @@ def test_docs_show_a_printable_ontology_document_that_is_not_stale():
             assert rows, f"the documented {relation} example is empty"
             shown = {tuple(row) for row in rows}
             assert shown <= {tuple(row) for row in expected[relation]}, relation
+def test_printed_ontology_text_mode_carries_the_whole_tbox():
+    # Set equality per relation, not tuple equality: pinning row order would
+    # fail a harmless later sort though no information changed. The line count
+    # is derived, never hardcoded -- a literal goes stale in silence and pins
+    # nothing about correctness. Completeness is the property that matters,
+    # because a caller reading a truncated vocabulary concludes exactly the
+    # wrong thing about what it may declare.
+    result = _run_cli("--print-ontology", "--text")
+
+    assert result.returncode == 0, result.stderr
+    expected = DEFAULT_ONTOLOGY.to_dict()
+    lines = result.stdout.splitlines()
+    assert len(lines) == sum(len(rows) for rows in expected.values())
+
+    rebuilt: dict[str, set[tuple[str, str]]] = {}
+    for line in lines:
+        relation, sep, rest = line.partition(": ")
+        assert sep, line
+        left, arrow, right = rest.partition(" -> ")
+        assert arrow, line
+        rebuilt.setdefault(relation, set()).add((left, right))
+
+    assert rebuilt == {
+        relation: {tuple(row) for row in rows}
+        for relation, rows in expected.items()
+        if rows
+    }

@@ -239,6 +239,19 @@ this flag is usually the one whose name was just refused. An `--ontology` file
 that fails validation still exits `2` and prints nothing, because a document
 that did not load cannot be printed.
 
+`--text` prints the same TBox one row per line, in the same relation order:
+
+```
+property_of_class: SharedBehavior -> touches_shared_behavior
+scope_property: one_line -> trivial
+sub_class_of: AuthSurface -> SharedBehavior
+surface_class: session_module -> AuthSurface
+```
+
+No declared term can contain a space, a colon, or `>`, so the line splits
+unambiguously -- but that form is for reading and grepping. JSON is the surface
+to parse, and it is the one that round-trips back through `--ontology`.
+
 The bundled ontology also classifies every registered skill (`ReviewSkill`,
 `TestSkill`, and so on under `ValidationSkill`). The selector rules do not use
 that hierarchy yet; it is declared so rule consolidation can be verified
