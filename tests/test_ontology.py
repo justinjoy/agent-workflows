@@ -338,7 +338,8 @@ def test_docs_show_a_printable_ontology_document_that_is_not_stale():
     # `[^\n]*`, not `[a-z]*`: a tag the class cannot match makes the engine skip
     # that opener and start at the fence's *closing* delimiter, which is the
     # pairing break this scan already had twice, relocated into the tag class.
-    for tag, block in re.findall(r"^```([^\n]*)\n(.*?)^```", doc, re.DOTALL | re.MULTILINE):
+    fence = r"^[ \t]*```([^\n]*)\n(.*?)^[ \t]*```"
+    for tag, block in re.findall(fence, doc, re.DOTALL | re.MULTILINE):
         # Only untagged fences: the renderer's output is untagged, and a JSON
         # fence contains `"path": "a -> b"` lines that would otherwise be read
         # as rows. Untagged fences that are not rows (the text-mode error
@@ -467,6 +468,10 @@ def test_the_rejection_hint_names_the_tbox_that_did_the_rejecting(tmp_path: Path
 
     # Pasting the hint back must reach the same TBox that did the rejecting.
     hint = result.stderr.strip().splitlines()[-1].split("; ")[-1]
+    # removeprefix/removesuffix are no-ops on a mismatch, so a reworded hint
+    # would leave the trailing words on the argv, where the positional request
+    # swallows them -- and this would quietly stop being a paste-back check.
+    assert hint.startswith("run ") and hint.endswith(" to list the declared vocabulary")
     argv = shlex.split(hint.removeprefix("run ").removesuffix(" to list the declared vocabulary"))
     echoed = _run_cli(*argv)
     assert echoed.returncode == 0, echoed.stderr
@@ -500,14 +505,17 @@ def test_the_documented_composition_rule_matches_what_the_flag_actually_does():
     for other in cli._parser()._actions:
         if other.dest in {"help", "print_ontology"}:
             continue
-        name = other.option_strings[0] if other.option_strings else "request text"
-        # Boundary-aware: a plain substring test passes vacuously for any name
-        # contained in a longer one, so a short alias like `-o` would be
-        # "found" inside `--ontology`. \b is not enough -- a trailing hyphen is
-        # itself a word boundary, so `--decision` would match `--decision-log`.
-        assert re.search(re.escape(name) + r"(?![\w-])", own_help), (
-            f"{name} is neither honoured nor ignored"
-        )
+        # Every alias, not just the first: adding `-o` to --ontology would
+        # otherwise leave `-o` accepted by the parser and classified nowhere,
+        # which is broader than what checking option_strings[0] proves.
+        for name in other.option_strings or ["request text"]:
+            # Boundary-aware: a plain substring test passes vacuously for any
+            # name contained in a longer one, so `-o` would be "found" inside
+            # `--ontology`. \b is not enough -- a trailing hyphen is itself a
+            # word boundary, so `--decision` would match `--decision-log`.
+            assert re.search(re.escape(name) + r"(?![\w-])", own_help), (
+                f"{name} is neither honoured nor ignored"
+            )
 
     doc = " ".join((ROOT / "docs" / "how-it-works.md").read_text(encoding="utf-8").split())
     assert "`--ontology` and `--text` still apply" in doc

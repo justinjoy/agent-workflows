@@ -38,6 +38,19 @@ EXPECTED_ATOMIC_SKILLS = {
 }
 
 
+# House rule these contract tests kept violating, in six forms across one
+# change: `Ontology.from_dict({})` satisfying "it loads"; a set compared against
+# the thing that populated it; three fence patterns whose captured-block list
+# was empty so the loop body never ran; argparse's --help dump and its usage
+# line, both produced from flag *registration* rather than from the text under
+# test; and one alias of an action standing in for every argument the parser
+# accepts.
+#
+# A presence assertion is only as strong as the proof that its haystack would
+# fail the assertion if the behavior under test were deleted -- and the proof
+# is deleting the behavior and watching it go red. Deriving a haystack instead
+# of hardcoding it is right, but it moves the failure from loud to silent, so
+# a derived haystack owes a guard that it is non-empty and actually derived.
 def _json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -910,7 +923,10 @@ def test_every_flag_the_documents_name_is_a_flag_the_cli_accepts():
         # in the one file this exists to read.
         flags = re.findall(r"`(--[a-z][a-z-]*)`", text)
         fenced = re.findall(r"(?<![`\w-])(--[a-z][a-z-]*)", "\n".join(
-            re.findall(r"^```[^\n]*\n(.*?)^```", text, re.DOTALL | re.MULTILINE)
+            # `[ \t]*` so a fence nested in a list is read too: today every
+            # fence sits at column 0, so an indented one would be unread and
+            # a typo inside it would ship green.
+            re.findall(r"^[ \t]*```[^\n]*\n(.*?)^[ \t]*```", text, re.DOTALL | re.MULTILINE)
         ))
         from_fences.update(fenced)
         flags += fenced
