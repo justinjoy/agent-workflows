@@ -7,7 +7,7 @@ import sys
 from .facts import classify_request
 from .models import RequestFacts
 from .decision_log import append_decision_record, append_failure_record
-from .ontology import derive, load_ontology
+from .ontology import DEFAULT_ONTOLOGY, derive, load_ontology
 from .serialization import plan_to_dict
 from .selector import HarnessError, SelectorRuleConflictError, select_plan
 
@@ -134,6 +134,14 @@ def _parser() -> argparse.ArgumentParser:
         help="JSON TBox document replacing the bundled default ontology.",
     )
     parser.add_argument(
+        "--print-ontology",
+        action="store_true",
+        help=(
+            "Print the active TBox as JSON and exit without evaluating any "
+            "facts. Honours --ontology; every other argument is ignored."
+        ),
+    )
+    parser.add_argument(
         "--text",
         action="store_true",
         help="Print a compact text plan instead of JSON.",
@@ -153,6 +161,27 @@ def main(argv: list[str] | None = None) -> int:
         ontology = load_ontology(args.ontology) if args.ontology else None
     except (OSError, ValueError) as exc:
         parser.error(str(exc))
+
+    if args.print_ontology:
+        # After the load, so an --ontology file that fails validation still
+        # exits 2: a document that did not load cannot be printed. Before
+        # derive(), so printing the vocabulary never needs the Wirelog runtime
+        # -- the caller reaching for this is usually the one whose fact was
+        # just rejected, and rejecting it again would be useless.
+        #
+        # A successful run that selects nothing. Callers are told to branch on
+        # the exit code, so exit 0 no longer implies a plan; both shipped
+        # contracts say so, and the document carries no `selected` key.
+        if args.decision_log is not None:
+            # f704f69 decided that a supplied --decision-log is never dropped
+            # in silence. There is no selection to record here, so say that
+            # rather than leave the caller believing a trace was written.
+            print(
+                "decision log not written: --print-ontology selects nothing to record",
+                file=sys.stderr,
+            )
+        print(json.dumps((ontology or DEFAULT_ONTOLOGY).to_dict(), indent=2, sort_keys=True))
+        return 0
 
     try:
         derivations = derive(args.touches, args.scope, ontology)

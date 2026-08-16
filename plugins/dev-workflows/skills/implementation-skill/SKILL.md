@@ -63,16 +63,25 @@ unavailable merely because the bare command is absent from `PATH`; try the
 remaining installed forms first. Do not install dependencies or rewrite the
 host environment implicitly.
 
-On success the command emits a machine-readable JSON plan containing request
+A run that selects skills emits a machine-readable JSON plan containing request
 facts, selected skills, blocked skills, and rule reasons, and exits `0`. Add
 `--decision-log path/to/decisions.jsonl` to append a durable selection record.
 
-A non-zero exit never prints a plan. Branch on the exit code rather than on the
-shape of stdout, and never read a failure as an empty plan.
+`--print-ontology` also exits `0`, and selects nothing: it prints the declared
+surfaces, scopes, and class hierarchy instead, so its document carries no
+`selected` key. Exit `0` therefore means the command answered the question it
+was asked, not that a plan exists.
+
+A non-zero exit never prints a plan, and a plan is what a run without
+`--print-ontology` produces when it exits `0`. Branch on the exit code together
+with the query you asked for, and never read a failure as an empty plan.
 
 - exit `2`: rejected input. Stdout is empty and the cause is on stderr, so a
   caller reading only stdout sees nothing at all here. Fix the facts and run
-  the selector again.
+  the selector again. `--touches` and `--scope` accept only declared names, and
+  `--print-ontology` prints exactly which ones -- read it rather than guessing
+  a name or retreating to `--property`, which is the keyword path the ontology
+  exists to replace.
 - exit `3`, `selector_unavailable`: the Wirelog runtime could not run. Fail
   closed as described below.
 - exit `4`, `rule_conflict`: two rules disagree about the same skill, so no

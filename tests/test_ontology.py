@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -227,3 +228,104 @@ def test_cli_combines_text_and_ontology_facts():
 
     assert result.returncode != 0
     assert "docs_only conflicts" in result.stderr
+
+
+def test_cli_prints_the_active_ontology_as_a_loadable_document():
+    # Round-trip against DEFAULT_ONTOLOGY, not against a re-serialization of the
+    # output: that would be self-consistent and anchored to nothing. Ontology is
+    # a frozen dataclass over tuples, so equality fails on a dropped, added, or
+    # reordered row -- a caller reading a truncated vocabulary concludes exactly
+    # the wrong thing about what it may declare.
+    result = _run_cli("--print-ontology")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert Ontology.from_dict(payload) == DEFAULT_ONTOLOGY
+    assert set(payload) == set(DEFAULT_ONTOLOGY.to_dict())
+    # A successful run that selects nothing, so a caller reading `selected`
+    # fails loudly instead of reading a TBox as an empty plan.
+    assert "selected" not in payload and "blocked" not in payload
+
+
+def test_printed_ontology_reflects_the_supplied_tbox_not_the_default(tmp_path: Path):
+    custom = Ontology(
+        sub_class_of=(("BillingSurface", "Surface"),),
+        surface_class=(("billing_ledger", "BillingSurface"),),
+        skill_class=(),
+        property_of_class=(("BillingSurface", "touches_shared_behavior"),),
+        scope_property=(),
+    )
+    # Without this the fixture could drift into equality with the default and
+    # make the assertion below vacuous.
+    assert custom != DEFAULT_ONTOLOGY
+    path = tmp_path / "tbox.json"
+    path.write_text(json.dumps(custom.to_dict()), encoding="utf-8")
+
+    result = _run_cli("--ontology", str(path), "--print-ontology")
+
+    assert result.returncode == 0, result.stderr
+    assert Ontology.from_dict(json.loads(result.stdout)) == custom
+
+
+def test_an_unloadable_ontology_is_rejected_before_anything_is_printed(tmp_path: Path):
+    # Pins the branch placement after the load: a document that did not load
+    # cannot be printed. Hoisting the branch to the top of main() breaks this.
+    path = tmp_path / "broken.json"
+    path.write_text("{not json", encoding="utf-8")
+
+    result = _run_cli("--ontology", str(path), "--print-ontology")
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert "not valid JSON" in result.stderr
+
+
+def test_printing_the_ontology_ignores_the_rest_of_the_request(tmp_path: Path):
+    log = tmp_path / "decisions.jsonl"
+    baseline = _run_cli("--print-ontology")
+
+    result = _run_cli(
+        "refactor auth workflow",
+        "--property", "trivial",
+        "--touches", "nonexistent_module",
+        "--decision-log", str(log),
+        "--print-ontology",
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == baseline.stdout
+    # The undeclared surface is deliberately not validated: the caller reaching
+    # for this flag is usually the one whose name was just rejected.
+    assert "nonexistent_module" not in result.stderr
+    # No selection happened, so there is no record -- but a supplied flag is
+    # never dropped in silence.
+    assert not log.exists()
+    assert "decision log not written" in result.stderr
+
+
+def test_docs_show_a_printable_ontology_document_that_is_not_stale():
+    # "It loads" is not a test: Ontology.from_dict({}) succeeds, so an example
+    # truncated to nothing would pass. Assert the relation names are complete
+    # and every row shown is a real row, which permits an abridged example
+    # while failing one that names a surface that was renamed or removed.
+    doc = (ROOT / "docs" / "how-it-works.md").read_text(encoding="utf-8")
+    expected = DEFAULT_ONTOLOGY.to_dict()
+
+    documented = []
+    for block in re.findall(r"```json\n(.*?)\n```", doc, re.DOTALL):
+        try:
+            parsed = json.loads(block)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(parsed, dict) and set(parsed) == set(expected):
+            documented.append(parsed)
+
+    assert documented, "the docs no longer show a printable ontology document"
+    for parsed in documented:
+        for relation, rows in parsed.items():
+            # Abridging is fine -- the real document is 51 rows -- but an
+            # example truncated to nothing would still satisfy a subset check
+            # while teaching a reader nothing about the vocabulary.
+            assert rows, f"the documented {relation} example is empty"
+            shown = {tuple(row) for row in rows}
+            assert shown <= {tuple(row) for row in expected[relation]}, relation

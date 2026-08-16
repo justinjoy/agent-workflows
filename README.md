@@ -46,8 +46,11 @@ agent-workflows-harness --touches session_module --scope one_line
 `session_module` contains none of the keywords the text classifier knows, yet
 `AuthSurface ⊑ SharedBehavior` still selects planning, critique, and broad
 tests. Each inferred property is reported with the subsumption path that
-produced it. Use `--ontology path/to/tbox.json` to supply your own TBox; adding
-vocabulary is a data change rather than a code change. See
+produced it. `--print-ontology` prints the vocabulary a request may draw on, so
+a name for `--touches` or `--scope` is read rather than guessed. Use
+`--ontology path/to/tbox.json` to supply your own TBox; adding vocabulary is a
+data change rather than a code change, and the same flag shows what a supplied
+file loaded as. See
 [How it works](docs/how-it-works.md#ontology-fact-source).
 
 Plugin hosts resolve the harness from `PATH`, the current workspace's `.venv`,

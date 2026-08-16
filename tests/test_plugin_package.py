@@ -878,3 +878,47 @@ def test_built_artifacts_match_runtime_and_plugin_distribution_contract(tmp_path
     assert "agent_workflows_harness/selector.py" in wheel_members
     assert any(name.endswith(".dist-info/entry_points.txt") for name in wheel_members)
     assert not any(name.startswith("plugins/") for name in wheel_members)
+
+
+def test_every_flag_the_documents_name_is_a_flag_the_cli_accepts():
+    # Derived from the parser rather than repeating a literal. Asserting
+    # `cli.main(["--print-ontology"]) == 0` would only catch renaming the flag
+    # and forgetting the test -- the likelier miss is renaming the flag,
+    # updating the test, and leaving every document naming a flag that no
+    # longer parses. This catches that direction.
+    known = set()
+    for action in cli._parser()._actions:
+        known.update(action.option_strings)
+    assert {"--property", "--touches", "--ontology"} <= known, "parser introspection broke"
+
+    sources = [
+        ROOT / "README.md",
+        ROOT / "docs" / "how-it-works.md",
+        ROOT / "plugins" / "dev-workflows" / "skills" / "implementation-skill" / "SKILL.md",
+    ]
+    seen = set()
+    for path in sources:
+        text = path.read_text(encoding="utf-8")
+        for flag in re.findall(r"`(--[a-z][a-z-]*)`", text):
+            seen.add(flag)
+            assert flag in known, f"{path.name} names {flag}, which the CLI does not accept"
+    assert "--print-ontology" in seen, "no document tells a caller the vocabulary is printable"
+
+
+def test_the_contract_routes_a_rejected_fact_at_the_printable_vocabulary():
+    # Issue #11's failure is a coordinator that guesses a surface, gets exit 2,
+    # and retreats to --property -- the keyword path the ontology replaces.
+    # Making the contract merely truthful about exit 0 does not stop that; it
+    # has to point somewhere.
+    skill = _flat(
+        (
+            ROOT / "plugins" / "dev-workflows" / "skills" / "implementation-skill" / "SKILL.md"
+        ).read_text(encoding="utf-8")
+    )
+
+    assert "`--print-ontology` prints exactly which ones" in skill
+    assert "which is the keyword path the ontology exists to replace" in skill
+    # Exit 0 no longer implies a plan, and the contract that tells coordinators
+    # to branch on the exit code has to say so.
+    assert "Exit `0` therefore means the command answered the question it" in skill
+    assert "its document carries no `selected` key" in skill
