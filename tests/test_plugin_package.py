@@ -199,6 +199,20 @@ def test_every_selector_failure_kind_terminates_through_the_final_report():
 # Membership in this set is what the workflow's own dispatch sentences are
 # cross-checked against.
 DELIVERY_CLAUSE = "is a failed dispatch and its work is lost"
+# Qualifiers that turn an obligation into advice. Every contract assertion here
+# is a substring check, so a hedge in front of a rule leaves the substrings
+# matching while the rule stops binding -- demonstrated, not assumed. Shared so
+# every test that pins a rule bans them, rather than whichever one remembered.
+HEDGES = (
+    "where practical",
+    "where possible",
+    "when convenient",
+    "where convenient",
+    "prefer",
+    "should ordinarily",
+    "except where no other assignment",
+    "where the host allows",
+)
 # Which workflow pass owns each dispatch. Keyed by heading text rather than
 # heading number, so renumbering the workflow does not break it, and required
 # below to equal the set derived from the contract, so it cannot go stale.
@@ -546,14 +560,7 @@ def test_no_agent_judges_an_artifact_it_produced():
     # substring test can, and these tests never prove a coordinator obeys the
     # contract, only that the contract says it -- but it puts the cost above
     # one adjective.
-    for hedge in (
-        "where practical",
-        "where possible",
-        "when convenient",
-        "where convenient",
-        "prefer",
-        "should ordinarily",
-    ):
+    for hedge in HEDGES:
         assert hedge not in agent_use.lower(), hedge
 
 
@@ -579,6 +586,10 @@ def test_the_planning_passes_do_not_contradict_single_judge_mode():
     # must say why it is the pass that stays independent.
     assert "challenge the plan, whoever wrote it" in critic
     assert "never goes to the agent that produced the plan" in critic
+    # Pin the imperative, not just the claim. A hedge blacklist cannot enumerate
+    # every qualifier -- "where the host allows it" defeats one and reads fine --
+    # so weakening `must` here has to break a substring rather than dodge a list.
+    assert "it is the one that must stay independent" in critic
     assert "the Architect plan" not in critic, (
         "the Critic Pass still assumes an Architect agent authored the plan"
     )
@@ -588,12 +599,25 @@ def test_the_planning_passes_do_not_contradict_single_judge_mode():
     doc = _flat((ROOT / "docs" / "how-it-works.md").read_text(encoding="utf-8"))
     assert "The plan's author never critiques it" in doc
     assert "The Implementer never reviews or validates its own candidate" in doc
-    assert "This is the one separation a run may lose" in doc
+    assert "This is the one of these three a run may lose" in doc
     for stale in (
         "Architect and Critic should be independent",
         "Implementer and Reviewer should be independent",
     ):
         assert stale not in doc, stale
+
+    # Same countermeasure as the rule test next door, for the same reason: the
+    # assertions above are substrings, so hedging all three obligations leaves
+    # every one of them matching while the policy becomes advice. That is
+    # issue #5's defect -- policy stated as preference -- reintroduced with the
+    # tripwire green, and it was demonstrated against this test before the ban
+    # was added here.
+    for hedge in HEDGES:
+        assert hedge not in critic.lower(), hedge
+        assert hedge not in _flat(_section(raw, "### 3. Architect Pass")).lower(), hedge
+    bullets = doc[doc.index("The workflow depends on separation between roles:") :][:1200]
+    for hedge in HEDGES:
+        assert hedge not in bullets.lower(), hedge
 
 
 def test_the_contract_establishes_agent_capacity_before_the_first_dispatch():

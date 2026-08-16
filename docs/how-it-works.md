@@ -256,7 +256,7 @@ The workflow depends on separation between roles:
 
 - The plan's author never critiques it, so the critique is not a confirmation of the plan. This one never bends.
 - The Implementer never reviews or validates its own candidate, which is why a host with no independent agent cannot reach a commit. This one never bends either.
-- Design and risk validation are argued by different agents wherever an assignment allows it. This is the one separation a run may lose, and only where no assignment preserves it — in `single-judge mode` it is lost at final validation, and the report says so.
+- Design and risk validation are argued by different agents wherever an assignment allows it. This is the one of these three a run may lose, and only where no assignment preserves it -- in `single-judge mode` it is lost at final validation, and the report says so. Other separations can still weaken through a degraded role, and the report names those too.
 
 Independence is only real if the role's output arrives. A dispatched role can
 finish its work and still deliver nothing, because hosts differ in how a
