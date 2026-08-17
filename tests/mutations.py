@@ -107,28 +107,24 @@ Adding an entry
 
 A non-Python target (a document, a manifest) is allowed: leave `module` unset
 and oracle 1 is skipped for that entry, since "it still imports" means nothing
-about Markdown. The other five apply unchanged. No table entry uses this yet --
-`test_a_target_that_is_not_python_skips_only_the_import_oracle` in the
-self-check is what keeps the path live -- and the first one that should is the
-doc fence scan, for the reason in the next paragraph.
+about Markdown. The other five apply unchanged. `doc-fence-scan` is that case,
+and `test_a_target_that_is_not_python_skips_only_the_import_oracle` in the
+self-check keeps the path exercised even if that entry ever leaves.
 
-What this seed does not cover yet
----------------------------------
+What this seed does not cover
+-----------------------------
 
-Two entries, both from the issue's later comment, both in `cli.py`. Named
-plainly because a thin seed is a defensible first increment and an
-overstated one is not:
+Five entries across three files. The three the issue names by test are all
+here; what is not covered is everything else. Two things follow, and the
+summary line states both so a green cannot be read as more than it is:
 
-- The **doc fence scan** (`test_every_flag_the_documents_name_is_a_flag_the_cli_accepts`)
-  is the largest single cluster in the issue's evidence -- one site, three
-  separate regex defects, each of which emptied the captured block list so
-  every per-item assertion inside the loop was vacuously satisfied. It mutates
-  `docs/how-it-works.md`, so it is the `module=None` case above.
-- The **rejection hint** and the **runtime-independence branch**, the other two
-  mutations the issue's body names by test.
-
-None of the three is here yet. The mechanism is what commit one is for; an
-entry is data, and data that has not been observed red is a guess.
+- A clean run says nothing about any test the table does not name. The
+  runner prints how many of the suite's tests the table covers for exactly
+  that reason.
+- Nothing causes this table to grow. `docs/maintenance.md` carries the
+  coverage figure so that a reader deciding whether to trust a green sees its
+  narrowness first, and a test pins that figure against `load_table()` so it
+  cannot go stale.
 """
 
 from __future__ import annotations
@@ -592,6 +588,8 @@ def _restore(path: Path, original: bytes) -> None:
 
 CLI = "src/agent_workflows_harness/cli.py"
 CLI_MODULE = "agent_workflows_harness.cli"
+ONTOLOGY = "src/agent_workflows_harness/ontology.py"
+ONTOLOGY_MODULE = "agent_workflows_harness.ontology"
 
 ENTRIES: list[Entry] = []
 
@@ -642,6 +640,65 @@ entry(
         "string early and the rest of the hint becomes argv. The only fixture "
         "reaching this branch is the POSIX one, since the character is illegal "
         "in a Windows filename."
+    ),
+)
+
+
+entry(
+    name="vocabulary-hint",
+    target=CLI,
+    module=CLI_MODULE,
+    old='parser.error(f"{exc}; {HINT_PREFIX}{printer}{HINT_SUFFIX}")',
+    new='parser.error(f"{exc}")',
+    test=(
+        "tests/test_ontology.py::"
+        "test_a_rejected_fact_points_at_the_flag_that_lists_the_vocabulary"
+    ),
+    expect="run --print-ontology to list the declared vocabulary",
+    note=(
+        "A rejected --touches or --scope exits 2 with an empty stdout, so the "
+        "hint is the only thing telling a caller how to learn the accepted "
+        "values. Without it they guess a name, get rejected again, and fall "
+        "back to --property, which is the keyword path the ontology exists to "
+        "replace."
+    ),
+)
+
+entry(
+    name="runtime-free-derive",
+    target=ONTOLOGY,
+    module=ONTOLOGY_MODULE,
+    old="        return ()",
+    new="        pass",
+    test=(
+        "tests/test_harness.py::"
+        "test_derive_without_abox_triples_does_not_need_the_wirelog_runtime"
+    ),
+    expect="import of pyrewire halted",
+    note=(
+        "derive() returns before importing pyrewire when there are no ABox "
+        "triples, so a keyword-only request never needs the Wirelog runtime. "
+        "Falling through instead imports it for every caller."
+    ),
+)
+
+entry(
+    name="doc-fence-scan",
+    target="docs/how-it-works.md",
+    old="agent-workflows-harness --print-ontology",
+    new="agent-workflows-harness --print-ontologyy",
+    test=(
+        "tests/test_plugin_package.py::"
+        "test_every_flag_the_documents_name_is_a_flag_the_cli_accepts"
+    ),
+    expect="how-it-works.md names --print-ontologyy, which the CLI does not accept",
+    note=(
+        "The largest single cluster in issue #12's evidence: one site, three "
+        "separate regex defects, each of which emptied the captured block list "
+        "so every per-item assertion in the loop was vacuously satisfied. One "
+        "of them extracted zero flags from the file it existed to read. This "
+        "is also the table's only non-Python target, so it is what keeps the "
+        "module=None path exercised by data rather than by a canary alone."
     ),
 )
 
