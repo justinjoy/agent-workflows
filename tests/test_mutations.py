@@ -454,9 +454,26 @@ def test_a_nodeid_naming_no_test_is_not_green(workspace: Path):
     assert verdict.name == mutations.NO_SUCH_TEST, verdict.detail
 
 
-def test_a_probe_restores_the_file_it_mutated(workspace: Path):
+def test_a_probe_restores_the_file_it_mutated(workspace: Path, monkeypatch):
     subject = workspace / "lib" / "subject.py"
     before = subject.read_bytes()
+
+    # Watch the file *during* the probe rather than inferring from the verdict.
+    # Asserting CAUGHT plus byte equality closes the case where `probe` stops
+    # mutating and returns an honest verdict, but not the case where the
+    # verdict is invented -- a `probe` returning CAUGHT as its first statement
+    # satisfies both halves, one because it is fabricated and the other because
+    # nothing was touched. Only an observation taken while the mutation should
+    # be on disk can tell those apart.
+    seen: list[bytes] = []
+    real_run_node = mutations._run_node
+
+    def watching(nodeid, cwd, env=None):
+        seen.append(subject.read_bytes())
+        return real_run_node(nodeid, cwd, env)
+
+    monkeypatch.setattr(mutations, "_run_node", watching)
+
     verdict = _probe(
         workspace,
         old=DELETE_QUOTING[0],
@@ -464,12 +481,10 @@ def test_a_probe_restores_the_file_it_mutated(workspace: Path):
         nodeid=SPACED,
         expect="spaced value must be quoted",
     )
-    # The verdict is half the assertion, not decoration. Byte equality alone is
-    # satisfied by two different worlds -- mutated and correctly restored, and
-    # never touched at all -- so a `probe` that stopped mutating passed this
-    # test named for restoring. Requiring CAUGHT proves a mutation happened;
-    # the byte comparison proves it was undone. Neither alone says both.
     assert verdict.name == mutations.CAUGHT, verdict.detail
+    # The mutation was actually on disk while the test ran. This is the half a
+    # verdict cannot supply, because a verdict can be fabricated.
+    assert any(b"if False:" in payload for payload in seen), "the mutation was never on disk"
     # Bytes, not text: a text round-trip on Windows would rewrite line endings
     # and turn every restore into a diff that this assertion would miss.
     assert subject.read_bytes() == before
