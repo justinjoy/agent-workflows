@@ -378,6 +378,12 @@ def _write_atomic(path: Path, payload: bytes) -> None:
         # mkstemp creates at 0600. Without this a restore would silently narrow
         # the source file's permissions on POSIX -- git tracks only the
         # executable bit, so nothing would report it.
+        #
+        # POSIX-only, and it has no falsifier here. Windows exposes no mode
+        # bits to observe, so a canary asserting the outcome would pass whether
+        # or not this line existed -- which is the vacuous-fixture shape this
+        # file refuses everywhere else. Recorded as an unwatched control rather
+        # than dressed up with an assertion that cannot fail locally.
         shutil.copymode(path, staging)
         os.replace(staging, path)
     except BaseException:
@@ -449,6 +455,15 @@ def probe(
 
     `importable` is `(dotted_name, sys_path_entry)`, or None to skip oracle 1
     for a target that is not importable Python.
+
+    `path` and `cwd` are an invariant pair, not two conveniences: the file
+    mutated must live in the tree pytest runs in. `run_table` used to take the
+    two halves separately and a caller omitted one, grading a fixture while
+    pointing at the real repository -- so that function now takes a single
+    `root`. Here they stay separate because the self-check genuinely needs a
+    `cwd` distinct from the target's parent. If a third caller ever appears,
+    collapse this too rather than adding an assertion; an unrepresentable
+    state beats a check somebody has to remember.
     """
 
     if old == new:
@@ -782,9 +797,19 @@ def _collected_node_ids(cwd: Path) -> set[str]:
 
 
 def run_table(
-    entries: list[Entry], collected: set[str], cwd: Path = ROOT, root: Path | None = None
+    entries: list[Entry], collected: set[str], root: Path | None = None
 ) -> list[tuple[Entry, Verdict]]:
     """Grade every entry, reporting a stale one as stale and never as green.
+
+    One `root`, not a `cwd` and a `root`. They must always be equal -- the tree
+    that is mutated and the tree pytest runs in are the same tree -- and taking
+    both, with different defaults, made the divergence representable. It was
+    already represented: one canary in the self-check omitted `root`, so it
+    graded a fixture while pointing at the real repository, and was harmless
+    only because that fixture's target did not exist. Point it at a real file
+    and an ordinary `pytest` run would have edited the working tree. The
+    self-check's own promise that it touches nothing was true for a reason
+    other than the one it gave, which is the defect this file exists to catch.
 
     `collected` is passed in rather than derived here, and the caller refuses
     to run on an empty one. Deriving it inside meant guarding with
@@ -794,6 +819,7 @@ def run_table(
     """
 
     root = root if root is not None else ROOT
+    cwd = root
     results: list[tuple[Entry, Verdict]] = []
     for item in entries:
         # Preflight, before anything is written: a nodeid that no longer exists
@@ -836,15 +862,26 @@ def recommended_pin(message: str) -> str:
     return message.splitlines()[0] if message else ""
 
 
-def emit_expect(item: Entry, cwd: Path = ROOT, root: Path | None = None) -> int:
+def emit_expect(item: Entry, root: Path | None = None) -> int:
     """Print the failure message an entry's mutation actually produces.
 
     The authoring rule this supports is the point: `expect` is copied from an
     observed failure, never written from belief about what the failure says. A
     guessed `expect` is one more assertion nobody watched fail.
+
+    One `root`, for the reason `run_table` has one: the tree mutated and the
+    tree pytest runs in are the same tree, and taking both made the divergence
+    representable. It would have been worse here than there. `emit_expect(item,
+    root=<fixture>)` with a separate default `cwd` mutates the fixture, runs
+    the test in the real repository, and tells the author "the mutation did not
+    make the named test fail" -- their mutation is fine and the call was wrong,
+    with nothing in the output saying so. Silent misdirection on the authoring
+    path, which is where this file has lost a control three times.
     """
 
-    target = (root if root is not None else ROOT) / item.target
+    root = root if root is not None else ROOT
+    cwd = root
+    target = root / item.target
     original = target.read_bytes()
     text = original.decode("utf-8")
     if text.count(item.old) != 1:
@@ -1041,7 +1078,7 @@ def main(
                 except KeyError:
                     print(f"no entry named {args.emit_expect!r}")
                     return EXIT_UNEVALUABLE
-                return emit_expect(item, cwd=root, root=root)
+                return emit_expect(item, root=root)
 
             code, message = first_failing_precondition(
                 [
@@ -1063,7 +1100,7 @@ def main(
 
             print(f"grading {len(entries)} entries")
             try:
-                results = run_table(entries, collected, cwd=root, root=root)
+                results = run_table(entries, collected, root=root)
             except (RestoreFailed, OSError) as exc:
                 # RestoreFailed means the tree is verified wrong. An OSError may
                 # come from anywhere in probe -- a temp dir, a subprocess, the

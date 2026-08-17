@@ -9,8 +9,14 @@ runner is not trusted on its own word here.
 
 Every canary below drives `probe()` -- the runner's only verdict path, and the
 table's only caller -- against a generated fixture whose correct verdict is
-known, and asserts the **exact** verdict. Nothing here touches the working
-tree; the fixtures live in a temporary directory.
+known, and asserts the **exact** verdict. The fixtures live in a temporary
+directory, and two different things keep them there: `run_table` and
+`emit_expect` each take a single `root`, so pointing at one tree while grading
+another is unrepresentable rather than merely unused; and
+`the_working_tree_is_untouched` below catches a mutation that survives the
+session. The first is what protects the working tree. The second is narrower
+than it first looks and its docstring says so -- crediting it with the first's
+job would point the next reader at the weaker of the two.
 
 The two that carry the weight:
 
@@ -59,6 +65,58 @@ def _load_runner():
 
 
 mutations = _load_runner()
+
+
+@pytest.fixture(scope="module", autouse=True)
+def the_working_tree_is_untouched():
+    """Fail the session if any file the table can mutate is left changed.
+
+    Be precise about what this does and does not catch, because the first
+    version of this docstring was not. It compares bytes before and after the
+    session, so it catches a mutation that **survives**. It cannot catch one
+    that is applied and restored mid-session -- `probe` restores what it
+    mutates, so a canary that graded the real repository by mistake would come
+    and go between these two reads and this fixture would say nothing.
+    Measured: exactly that canary, injected, left the session green.
+
+    What protects against grading the wrong tree is `run_table` taking a single
+    `root`, which makes the divergence unrepresentable rather than merely
+    unused. Crediting this fixture for that would point the next reader at the
+    weaker of the two, which is how the one that matters gets deleted.
+
+    What this adds is the narrow case the collapse cannot reach: a restore that
+    silently did not happen. `_restore` already raises on a verified-bad
+    restore, so the window is small -- and small is not nothing, since it is
+    the difference between a developer's tree being wrong and being told so.
+
+    Derived from the table rather than hardcoded, so a new entry is covered the
+    day it lands. See `watched_targets` for why the derivation is guarded
+    before the constant joins it.
+    """
+
+    before = {path: path.read_bytes() for path in watched_targets()}
+    yield
+    changed = [str(path) for path, payload in before.items() if path.read_bytes() != payload]
+    assert not changed, f"the self-check modified the working tree: {changed}"
+
+
+def watched_targets() -> list[Path]:
+    """Every file the table can mutate, plus the one it always could.
+
+    The derived set is guarded **before** the constant joins it. A first
+    version appended `cli.py` and then asserted the list was non-empty, which
+    is true by construction -- so a derivation returning nothing passed, with
+    a message that said "no targets derived" while testing a list that had a
+    constant added to it. That is the same group-A shape this guard exists to
+    prevent, inside the guard, in the commit that closed the previous
+    instance. `test_the_watched_set_is_empty_without_a_table` is its falsifier.
+    """
+
+    derived = sorted({ROOT / item.target for item in mutations.load_table()})
+    assert derived, "no targets derived from the table; this fixture would watch only cli.py"
+    always = ROOT / "src" / "agent_workflows_harness" / "cli.py"
+    assert always.exists(), "the constant target is gone; this fixture watches less than it says"
+    return sorted(set(derived) | {always})
 
 
 SUBJECT = '''
@@ -399,13 +457,19 @@ def test_a_nodeid_naming_no_test_is_not_green(workspace: Path):
 def test_a_probe_restores_the_file_it_mutated(workspace: Path):
     subject = workspace / "lib" / "subject.py"
     before = subject.read_bytes()
-    _probe(
+    verdict = _probe(
         workspace,
         old=DELETE_QUOTING[0],
         new=DELETE_QUOTING[1],
         nodeid=SPACED,
         expect="spaced value must be quoted",
     )
+    # The verdict is half the assertion, not decoration. Byte equality alone is
+    # satisfied by two different worlds -- mutated and correctly restored, and
+    # never touched at all -- so a `probe` that stopped mutating passed this
+    # test named for restoring. Requiring CAUGHT proves a mutation happened;
+    # the byte comparison proves it was undone. Neither alone says both.
+    assert verdict.name == mutations.CAUGHT, verdict.detail
     # Bytes, not text: a text round-trip on Windows would rewrite line endings
     # and turn every restore into a diff that this assertion would miss.
     assert subject.read_bytes() == before
@@ -692,7 +756,7 @@ def test_an_entry_whose_test_is_not_collected_is_refused_before_any_write(worksp
         expect="AssertionError: something",
         note="a note",
     )
-    results = mutations.run_table([stale], collected={SPACED}, cwd=workspace)
+    results = mutations.run_table([stale], collected={SPACED}, root=workspace)
     assert [verdict.name for _, verdict in results] == [mutations.NO_SUCH_TEST]
 
 
@@ -719,13 +783,13 @@ def test_a_table_entry_reaches_the_import_oracle(workspace: Path):
     # entry* while all of them stayed green -- and a syntax-error mutation
     # would then be graded instead of reported BROKEN.
     entry = _workspace_entry(workspace, old="return value", new="return value +")
-    results = mutations.run_table([entry], collected={SPACED}, cwd=workspace, root=workspace)
+    results = mutations.run_table([entry], collected={SPACED}, root=workspace)
     assert [verdict.name for _, verdict in results] == [mutations.BROKEN], results[0][1].detail
 
 
 def test_a_table_entry_reaches_the_verdict_path_at_all(workspace: Path):
     entry = _workspace_entry(workspace)
-    results = mutations.run_table([entry], collected={SPACED}, cwd=workspace, root=workspace)
+    results = mutations.run_table([entry], collected={SPACED}, root=workspace)
     assert [verdict.name for _, verdict in results] == [mutations.CAUGHT], results[0][1].detail
 
 
@@ -734,7 +798,7 @@ def test_the_authoring_path_recommends_a_pin_that_can_discriminate(workspace: Pa
     # a bad pin is handed to the author, pasted in good faith, and then every
     # oracle downstream agrees with it. Nothing tested it at all.
     entry = _workspace_entry(workspace)
-    code = mutations.emit_expect(entry, cwd=workspace, root=workspace)
+    code = mutations.emit_expect(entry, root=workspace)
     printed = capsys.readouterr().out
     assert code == mutations.EXIT_OK, printed
 
@@ -765,7 +829,7 @@ def test_the_authoring_path_refuses_an_anchor_that_is_not_unique(workspace: Path
     # author pinning from an ambiguous anchor gets a message produced by
     # mutating every site at once, which describes no entry they could write.
     entry = _workspace_entry(workspace, old="value", new="valu3")
-    code = mutations.emit_expect(entry, cwd=workspace, root=workspace)
+    code = mutations.emit_expect(entry, root=workspace)
     assert code != mutations.EXIT_OK
     assert "exactly once" in capsys.readouterr().out
 
@@ -774,7 +838,7 @@ def test_the_authoring_path_refuses_a_test_that_is_already_red(workspace: Path, 
     entry = _workspace_entry(
         workspace, test="test_subject.py::test_that_is_already_red_before_any_mutation"
     )
-    code = mutations.emit_expect(entry, cwd=workspace, root=workspace)
+    code = mutations.emit_expect(entry, root=workspace)
     assert code != mutations.EXIT_OK
     assert "does not pass on the clean tree" in capsys.readouterr().out
 
@@ -812,8 +876,52 @@ def test_the_import_rule_refuses_an_entry_naming_a_module_that_is_not_there():
     assert drift is not None and "no_such_module" in drift
 
 
+def test_the_import_rule_refuses_an_entry_whose_module_and_target_disagree():
+    # The guard has two branches and only one was pinned. This is the other,
+    # and it is the one implementing the function's stated purpose: both files
+    # exist, so `not landing.exists()` does not fire, and the mismatch check
+    # is all that stands between an entry mutating one file and import-checking
+    # another. Replacing it with `if False:` left every canary green.
+    crossed = mutations.Entry(
+        name="crossed",
+        target="src/agent_workflows_harness/cli.py",
+        old="old",
+        new="new",
+        test="tests/test_x.py::test_y",
+        expect="AssertionError: something",
+        note="a note",
+        module="agent_workflows_harness.selector",
+    )
+    drift = mutations.verify_import_rule([crossed])
+    assert drift is not None, "an entry naming two different files was accepted"
+    assert "selector" in drift and "cli.py" in drift, drift
+
+
 def test_the_import_rule_passes_for_the_shipped_table():
     assert mutations.verify_import_rule(mutations.load_table()) is None
+
+
+def test_a_mutation_is_never_written_straight_onto_the_target(tmp_path: Path, monkeypatch):
+    # Oracle 6. Both the mutation and the restore stage a sibling file and
+    # `os.replace` it into position, so an interrupted write cannot truncate
+    # the source. Nothing observed that: writing directly with `write_bytes`
+    # left every canary green.
+    #
+    # Falsified by making the replace step fail. If the staging path is in use
+    # the target still holds its original bytes; a direct write would already
+    # have overwritten them.
+    target = tmp_path / "subject.py"
+    target.write_bytes(b"the original bytes")
+
+    def refuse(src, dst):
+        raise OSError("replace refused")
+
+    monkeypatch.setattr(mutations.os, "replace", refuse)
+    with pytest.raises(OSError):
+        mutations._write_atomic(target, b"the mutated bytes")
+    assert target.read_bytes() == b"the original bytes"
+    # And the staging file is cleaned up rather than left inside the package.
+    assert not list(tmp_path.glob(f"{mutations.STAGING_PREFIX}*"))
 
 
 # --------------------------------------------------------------------------
@@ -1152,6 +1260,22 @@ def test_the_checklist_states_how_little_the_table_covers():
     assert claim in checklist, (
         f"the checklist does not state the table's real coverage; expected {claim!r}"
     )
+
+
+def test_the_watched_set_is_empty_without_a_table(monkeypatch):
+    # The falsifier for the guard above. Without it, the guard is a claim about
+    # the derivation that nothing checks -- which is what it was: the constant
+    # was appended first, so a derivation returning nothing still passed.
+    monkeypatch.setattr(mutations, "load_table", list)
+    with pytest.raises(AssertionError, match="no targets derived"):
+        watched_targets()
+
+
+def test_the_watched_set_covers_every_file_the_table_can_mutate():
+    watched = set(watched_targets())
+    for item in mutations.load_table():
+        assert ROOT / item.target in watched, f"{item.name}'s target is not watched"
+    assert ROOT / "src" / "agent_workflows_harness" / "cli.py" in watched
 
 
 def test_the_lock_file_the_runner_creates_is_ignored():
