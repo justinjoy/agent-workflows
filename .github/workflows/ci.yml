@@ -1,0 +1,173 @@
+# The repo had no CI until this file, and the mutation table in tests/ was
+# written on that assumption: it was a checklist-only control because a
+# checklist was the only mechanism there was. docs/maintenance.md still asks
+# you to run it locally, for a reason that survives CI -- a SURVIVED entry is
+# better found before you push than reported back to you afterwards.
+name: CI
+
+on:
+  pull_request:
+  # `main` only, not every branch. `pull_request` already covers work with a
+  # PR open, and an unfiltered `push` would run the whole matrix twice for
+  # every such push: the two events carry different refs
+  # (refs/heads/<branch> vs refs/pull/N/merge), so they land in different
+  # concurrency groups and neither cancels the other.
+  push:
+    # `spike/**` is how a control gets falsified without putting a
+    # deliberately broken commit into a PR's history: branch, break the thing,
+    # push, read the red run, delete the branch.
+    #
+    # This is not what `workflow_dispatch` is for, though the first draft of
+    # this file said it was. Measured:
+    #
+    #   gh workflow run ci.yml --ref spike/copymode-falsifier
+    #   HTTP 404: workflow ci.yml not found on the default branch
+    #
+    # Dispatch is only offered for workflows that already exist on the default
+    # branch, so it cannot run a workflow that has never merged -- which is
+    # exactly the case the comment claimed it covered. A `push` pattern works
+    # from the pushed ref itself and therefore does.
+    branches: [main, 'spike/**']
+  # Useful once this file is on `main`: re-running the matrix on demand.
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: tests (${{ matrix.os }}, py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # Do not stop the other cells when one fails. Each cell exists to observe
+      # something the others cannot, so a Linux failure and a Windows failure
+      # are different facts and both are wanted.
+      fail-fast: false
+      matrix:
+        include:
+          # Every ubuntu cell buys the POSIX side: mode bits, which
+          # `_write_atomic` reapplies after the replace and which Windows
+          # cannot observe at all -- there a fresh temp file and a source file
+          # report the same mode, so an assertion about it carries no
+          # information. Every ubuntu cell is also the only LF checkout. That
+          # is why there are ubuntu cells; it is not why there are two, so
+          # each names what it alone adds.
+          #
+          # There is no `ubuntu × 3.12` cell, and its absence is deliberate.
+          # POSIX is covered by the two cells below, 3.12 is covered by the
+          # Windows cell, and nothing here is sensitive to the intersection:
+          # the mode canary needs POSIX and is version-agnostic, the CRLF lint
+          # needs Windows, the toolchain-text entries want the newest
+          # interpreter. A cell that observes nothing the others do not is a
+          # cell whose justification has to be written for it afterwards, and
+          # this file's value is that each one names what it alone adds.
+          #
+          # The floor `requires-python = ">=3.11"` declares, which nothing
+          # checked before this file.
+          - os: ubuntu-latest
+            python: "3.11"
+          # The newest cell, and the one that grades the table -- see the
+          # `mutations` job. Three of the five entries pin toolchain-generated
+          # text (CPython's "import of X halted", pytest's assertion
+          # rendering), so the table is the artifact a Python or pytest upgrade
+          # actually breaks.
+          - os: ubuntu-latest
+            python: "3.13"
+          # The CRLF checkout. `test_no_anchor_spans_more_than_one_line` exists
+          # because this repo checks out CRLF on Windows, and its rationale is
+          # only exercised where that is true. It is also where the read-only
+          # staging-file leak was found, and the platform the maintainer uses.
+          - os: windows-latest
+            python: "3.12"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      # Editable, with the dev extras: one test shells out to
+      # `python -m build --no-isolation` and needs build/setuptools/wheel
+      # importable in this same interpreter.
+      - name: Install
+        run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
+
+      - name: Tests
+        run: python -m pytest -q
+
+      # pytest exits 0 for a skipped test, so a green suite cannot tell "the
+      # platform canary ran" from "it was skipped everywhere". Read the JUnit
+      # record instead -- the same reasoning the mutation runner already
+      # encodes for its own verdicts, applied to CI.
+      #
+      # Two-sided on purpose. Asserting only "the one that should run, ran"
+      # leaves the skip-detection branch dormant on every green run: a control
+      # that fires only when something is wrong is a control nobody has seen
+      # work. Asserting the complementary canary IS skipped exercises both
+      # branches of the parse every time, and notices if either `skipif`
+      # marker drifts.
+      - name: Each platform-only canary ran where it should and skipped where it should not
+        shell: bash
+        env:
+          MODE_CANARY: tests/test_mutations.py::test_a_write_preserves_the_targets_mode
+          LEAK_CANARY: tests/test_mutations.py::test_a_read_only_target_fails_without_leaking_a_staging_file
+          # On Linux the mode canary must run and the read-only one must skip;
+          # on Windows the reverse. An inverted `skipif` fails here rather than
+          # passing quietly.
+          EXPECT_RAN: ${{ runner.os == 'Linux' && 'MODE' || 'LEAK' }}
+        run: |
+          python -m pytest -q -p no:cacheprovider --junit-xml=observed.xml \
+            "$MODE_CANARY" "$LEAK_CANARY"
+          python - <<'PY'
+          import os, sys, xml.etree.ElementTree as ET
+
+          names = {"MODE": os.environ["MODE_CANARY"], "LEAK": os.environ["LEAK_CANARY"]}
+          ran_key = os.environ["EXPECT_RAN"]
+          skipped_key = "LEAK" if ran_key == "MODE" else "MODE"
+
+          records = {}
+          for case in ET.parse("observed.xml").getroot().iter("testcase"):
+              nodeid = case.get("classname", "").replace(".", "/") + ".py::" + case.get("name", "")
+              records[nodeid] = case
+          if len(records) != 2:
+              sys.exit(f"expected both canaries in the report, got {sorted(records)}")
+
+          ran, skipped = names[ran_key], names[skipped_key]
+          if records[ran].find("skipped") is not None:
+              sys.exit(f"{ran} was skipped on this runner, so nothing observed it")
+          if records[skipped].find("skipped") is None:
+              sys.exit(f"{skipped} was not skipped here; its platform guard has drifted")
+          print(f"observed: {ran} ran; {skipped} correctly skipped")
+          PY
+
+  mutations:
+    name: mutation table
+    # A red suite makes the runner abort with EXIT_UNEVALUABLE anyway, so
+    # without this the job pays its full runtime to report a fact the `test`
+    # job already reported, under a name that says something else.
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          # The newest cell in the matrix. Three of the five entries pin text
+          # that CPython or pytest generates, so this is the check most likely
+          # to be broken by a toolchain move, and it belongs on the newest
+          # toolchain rather than the middle one.
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install
+        run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
+
+      # --skip-self-check skips only the *duplicate* run of the self-check:
+      # the full-suite precondition inside the runner collects
+      # tests/test_mutations.py regardless, so a red oracle still aborts before
+      # any verdict is produced. `test_the_full_suite_precondition_collects_the_self_check`
+      # is what keeps that true.
+      - name: Grade the table
+        run: python tests/mutations.py --skip-self-check

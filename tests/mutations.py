@@ -8,10 +8,13 @@ Run it:
 Not collected by pytest: the filename matches neither `test_*.py` nor
 `*_test.py`. Only the self-check in `tests/test_mutations.py` runs in the gate,
 because this file writes to `src/` mid-run and a suite interrupted with `-x`
-would leave a mutated source file on disk. The cost of that choice is real and
-worth stating: nothing runs this automatically, because this repo has no CI. It
-is listed in `docs/maintenance.md` under Validation, which is the checklist that
-does exist.
+would leave a mutated source file on disk.
+
+CI grades the table on every pull request -- see `.github/workflows/ci.yml`,
+pinned by `test_ci_runs_the_mutation_runner`. `docs/maintenance.md` still asks
+you to run it locally when you change a contract test, for the reason that
+survives CI: a SURVIVED entry is better found before you push than reported
+back to you afterwards.
 
 Why this exists
 ---------------
@@ -133,6 +136,7 @@ import argparse
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -161,13 +165,18 @@ AMBIGUOUS = "AMBIGUOUS"
 NO_SUCH_TEST = "NO_SUCH_TEST"
 BASELINE_RED = "BASELINE_RED"
 BROKEN = "BROKEN"
+# The target could not be written at all -- read-only, or on a filesystem that
+# refused. Distinct from BROKEN, which means the mutation applied and produced
+# a file that will not import: here nothing was applied, so the tree is clean
+# and the remedy is the file's permissions rather than the entry.
+UNWRITABLE = "UNWRITABLE"
 
 # Verdicts that mean "the table could not evaluate this entry", as opposed to
 # SURVIVED, which is an evaluated entry with a bad answer. Kept as one set so
 # the exit-code mapping and the summary line cannot disagree about which is
 # which.
 UNEVALUABLE = frozenset(
-    {WRONG_REASON, ERRORED, STALE, AMBIGUOUS, NO_SUCH_TEST, BASELINE_RED, BROKEN}
+    {WRONG_REASON, ERRORED, STALE, AMBIGUOUS, NO_SUCH_TEST, BASELINE_RED, BROKEN, UNWRITABLE}
 )
 
 EXIT_OK = 0
@@ -362,26 +371,49 @@ def _write_atomic(path: Path, payload: bytes) -> None:
 
     Bytes rather than text throughout, so a restore on Windows cannot come back
     as a line-ending diff.
+
+    `os.replace` gives the destination the *staging* file's metadata, and
+    `mkstemp` creates at 0600, so without help a restore would silently narrow
+    the source file's permissions on POSIX -- git tracks only the executable
+    bit, so nothing would report it.
+
+    The mode is therefore captured before and reapplied to the target after,
+    rather than copied onto the staging file before the replace. That ordering
+    is not a style choice; the other one was measured wrong on Windows:
+
+        target read-only (0o444)
+          staging mode after shutil.copymode : 0o444   <- the bit is copied on
+          os.replace                         : PermissionError
+          unlink of staging                  : PermissionError
+          => `.mutations-XXXX` left inside the directory being mutated
+
+    Making the staging file match a read-only target made the staging file
+    unremovable, so the cleanup below raised a second error from inside the
+    handler, masked the first, and leaked a file into `src/`. The line added to
+    protect POSIX permissions broke this function's own stated guarantee on
+    Windows. Capturing the mode instead means nothing ever makes the staging
+    file read-only, so the hazard is gone rather than guarded -- and a
+    read-only target now fails cleanly, with the error it actually hit.
+
+    What this still does not preserve, on either platform, is anything beyond
+    the mode: a non-inherited Windows ACE on the target is lost, measured. That
+    is the same root cause -- `os.replace` does not preserve destination
+    metadata -- and closing it would need a security-descriptor copy and a
+    dependency. Recorded rather than fixed, and named here so the next reader
+    does not mistake "the mode is preserved" for "the file's permissions are".
     """
 
+    # Captured before the replace, because after it the original is gone.
+    mode = stat.S_IMODE(path.stat().st_mode) if path.exists() else None
     handle, staging = tempfile.mkstemp(dir=str(path.parent), prefix=STAGING_PREFIX)
     try:
         with os.fdopen(handle, "wb") as stream:
             stream.write(payload)
             stream.flush()
             os.fsync(stream.fileno())
-        # os.replace carries the staging file's mode onto the destination, and
-        # mkstemp creates at 0600. Without this a restore would silently narrow
-        # the source file's permissions on POSIX -- git tracks only the
-        # executable bit, so nothing would report it.
-        #
-        # POSIX-only, and it has no falsifier here. Windows exposes no mode
-        # bits to observe, so a canary asserting the outcome would pass whether
-        # or not this line existed -- which is the vacuous-fixture shape this
-        # file refuses everywhere else. Recorded as an unwatched control rather
-        # than dressed up with an assertion that cannot fail locally.
-        shutil.copymode(path, staging)
         os.replace(staging, path)
+        if mode is not None:
+            os.chmod(path, mode)
     except BaseException:
         Path(staging).unlink(missing_ok=True)
         raise
@@ -500,8 +532,22 @@ def probe(
     if mutated == text or new not in mutated:
         return Verdict(STALE, "the replacement did not change the file")
 
+    # Outside the try/finally below, and deliberately. If the mutation itself
+    # cannot be written, nothing was applied and there is nothing to restore --
+    # so entering the restore path would raise again on the same unwritable
+    # file and `main` would exit 4, whose message says the working tree still
+    # holds a mutation. It provably does not. A failure in this first write is
+    # categorically "the target could not be touched"; only a failure after it
+    # can dirty the tree.
     try:
         _write_atomic(path, mutated.encode("utf-8"))
+    except OSError as exc:
+        return Verdict(
+            UNWRITABLE,
+            f"{path} could not be written, so no mutation was applied: {exc}",
+        )
+
+    try:
         if importable is not None:
             module, path_entry = importable
             broken = _import_check(module, path_entry, cwd)
@@ -1059,7 +1105,16 @@ def report_results(
         # Otherwise the only evidence is one missing line at the top of a run
         # nobody kept, and the docstring's claim that the oracle is validated
         # rather than asserted was conditional on a flag that left no trace.
-        print("WARNING: --skip-self-check was used; the runner's own oracle was not validated")
+        # Says what is true. The oracle *was* validated -- the full-suite
+        # precondition collects tests/test_mutations.py, so the canaries ran;
+        # what was skipped is the dedicated second run of them. The old wording
+        # claimed the oracle went unvalidated, which was false, and CI passes
+        # this flag on every run: a warning that is always printed and always
+        # wrong trains the reader to skip the line where a true one would go.
+        print(
+            "note: --skip-self-check skipped the dedicated self-check run; the "
+            "oracle was still validated by the full-suite check above"
+        )
     # Two footers, not one. A survivor is a finding about a test; an
     # unevaluable entry is a finding about the table. Printing them together
     # makes the reader work out which they are looking at.
