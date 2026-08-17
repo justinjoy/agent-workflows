@@ -37,8 +37,10 @@ from __future__ import annotations
 import ast
 import importlib.util
 import os
+import stat
 import subprocess
 import sys
+import tempfile
 import textwrap
 from pathlib import Path
 
@@ -622,17 +624,25 @@ def test_every_verdict_the_runner_can_produce_lands_in_a_bucket(capsys):
     # The partition assertion, driven with every verdict name the runner
     # defines. A verdict in no bucket disappears from both the summary and the
     # exit code, which is exactly how the measured degradation stayed silent.
-    every = [
-        mutations.CAUGHT,
-        mutations.SURVIVED,
-        mutations.WRONG_REASON,
-        mutations.ERRORED,
-        mutations.STALE,
-        mutations.AMBIGUOUS,
-        mutations.NO_SUCH_TEST,
-        mutations.BASELINE_RED,
-        mutations.BROKEN,
-    ]
+    #
+    # Derived, because the hand-written list this replaces drifted on its first
+    # opportunity: `UNWRITABLE` was added to the runner and never reached the
+    # list, so dropping it from `UNEVALUABLE` left the suite green under a test
+    # whose name claims it drives every verdict.
+    #
+    # Derived from the module's own constants -- a name that is upper-case and
+    # equal to its own value -- and deliberately NOT from
+    # `{CAUGHT, SURVIVED} | UNEVALUABLE`. That would be self-consistent and
+    # anchored to nothing: removing a member would remove it from the
+    # expectation too, and the degradation this test exists to catch would stay
+    # green exactly as it did before.
+    every = sorted(
+        name
+        for name, value in vars(mutations).items()
+        if name.isupper() and isinstance(value, str) and value == name
+    )
+    assert len(every) >= 9, f"only {len(every)} verdicts derived; the derivation broke"
+    assert mutations.UNWRITABLE in every and mutations.CAUGHT in every
     rows = [_verdict_row(f"e{index}", name) for index, name in enumerate(every)]
     code = mutations.report_results(rows)
     out = capsys.readouterr().out
@@ -666,7 +676,14 @@ def test_skipping_the_self_check_is_stated_in_the_summary(capsys):
     # Otherwise the only evidence is a missing line at the top of a run nobody
     # kept.
     mutations.report_results([_verdict_row("a", mutations.CAUGHT)], self_check_skipped=True)
-    assert "--skip-self-check" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "--skip-self-check" in out
+    # And it must say what is true. The earlier wording claimed the oracle went
+    # unvalidated, which it does not -- the full-suite precondition collects
+    # the canaries. CI passes this flag on every run, so a line that is always
+    # printed and always wrong would train the reader to ignore it.
+    assert "still validated" in out, out
+    assert "not validated" not in out, out
 
 
 def test_a_failing_precondition_stops_the_ones_after_it():
@@ -719,16 +736,27 @@ def test_a_held_lock_does_not_report_itself_as_a_lost_tripwire():
     # able to impersonate it.
     assert mutations.EXIT_LOCKED != mutations.EXIT_SURVIVED
     assert mutations.EXIT_UNEXPECTED != mutations.EXIT_SURVIVED
-    codes = [
-        mutations.EXIT_OK,
-        mutations.EXIT_SURVIVED,
-        mutations.EXIT_UNEVALUABLE,
-        mutations.EXIT_SELF_CHECK,
-        mutations.EXIT_RESTORE_FAILED,
-        mutations.EXIT_LOCKED,
-        mutations.EXIT_UNEXPECTED,
-    ]
-    assert len(set(codes)) == len(codes), "two outcomes share an exit code"
+
+    # Derived, for the same reason the verdict list is. This was a hand-written
+    # enumeration under a message claiming completeness -- "two outcomes share
+    # an exit code" -- and a new `EXIT_*` colliding with `EXIT_SURVIVED` would
+    # simply never reach it, leaving the collision invisible to the test whose
+    # whole purpose is collisions. It survived the two additions made during
+    # this work only because someone remembered, which is the thing this repo
+    # has documented itself losing eleven times.
+    codes = {
+        name: value
+        for name, value in vars(mutations).items()
+        if name.startswith("EXIT_") and isinstance(value, int)
+    }
+    assert len(codes) >= 7, f"only {len(codes)} exit codes derived; the derivation broke"
+    assert "EXIT_SURVIVED" in codes and "EXIT_LOCKED" in codes
+    collisions = {
+        value: sorted(n for n, v in codes.items() if v == value)
+        for value in set(codes.values())
+        if list(codes.values()).count(value) > 1
+    }
+    assert not collisions, f"outcomes share an exit code: {collisions}"
 
 
 def test_a_red_suite_is_reported_rather_than_graded(workspace: Path):
@@ -874,6 +902,130 @@ def test_a_green_self_check_lets_the_run_proceed(tmp_path: Path):
 
 def test_skipping_the_self_check_returns_no_failure(tmp_path: Path):
     assert mutations._self_check(True, cwd=tmp_path, target="nonexistent.py") is None
+
+
+def test_a_failed_write_leaves_no_staging_file(tmp_path: Path, monkeypatch):
+    # `_write_atomic` promises the staging file is removed on any exception.
+    # Nothing observed that: the promise was false on Windows for a read-only
+    # target and no test noticed. Driven platform-neutrally by making the
+    # replace itself fail, so the cleanup contract is pinned everywhere.
+    target = tmp_path / "subject.py"
+    target.write_bytes(b"original")
+
+    def refuse(src, dst):
+        raise OSError("replace refused")
+
+    monkeypatch.setattr(mutations.os, "replace", refuse)
+    with pytest.raises(OSError):
+        mutations._write_atomic(target, b"mutated")
+    assert target.read_bytes() == b"original"
+    assert not list(tmp_path.glob(f"{mutations.STAGING_PREFIX}*")), (
+        "a failed write left a staging file behind"
+    )
+
+
+@pytest.mark.skipif(os.name != "nt", reason="read-only semantics differ; POSIX replace ignores them")
+def test_a_read_only_target_fails_without_leaking_a_staging_file(tmp_path: Path):
+    # The Windows-native version, and the one that would have caught the real
+    # defect. Copying the target's read-only bit onto the staging file made the
+    # staging file unremovable, so the cleanup raised a second error from inside
+    # its own handler, masked the first, and left `.mutations-XXXX` inside the
+    # directory being mutated.
+    #
+    # This asserts the platform rather than trusting the marker: an inverted
+    # skip condition fails loudly here instead of passing vacuously on POSIX,
+    # where a read-only file is replaceable anyway and the premise does not hold.
+    assert os.name == "nt", "this canary only means anything on Windows"
+    target = tmp_path / "subject.py"
+    target.write_bytes(b"original")
+    os.chmod(target, stat.S_IREAD)
+    try:
+        with pytest.raises(PermissionError):
+            mutations._write_atomic(target, b"mutated")
+        assert target.read_bytes() == b"original"
+        assert not list(tmp_path.glob(f"{mutations.STAGING_PREFIX}*")), (
+            "a read-only target left an unremovable staging file in the tree"
+        )
+    finally:
+        os.chmod(target, stat.S_IWRITE)
+
+
+@pytest.mark.skipif(os.name != "nt", reason="POSIX replaces a read-only file happily")
+def test_a_target_that_cannot_be_written_is_not_graded(workspace: Path):
+    # The falsifier `UNWRITABLE` arrived without. A failure of the *first*
+    # write means nothing was applied, so the tree is provably clean -- letting
+    # it reach the restore path instead would raise again on the same
+    # unwritable file and exit 4, whose message sends a maintainer to
+    # `git checkout` a file nothing touched.
+    #
+    # Windows-only for the same reason as the leak canary: on POSIX a 0o444
+    # file is replaceable, because rename permission comes from the directory.
+    assert os.name == "nt", "this canary only means anything on Windows"
+    subject = workspace / "lib" / "subject.py"
+    before = subject.read_bytes()
+    os.chmod(subject, stat.S_IREAD)
+    try:
+        verdict = _probe(
+            workspace,
+            old=DELETE_QUOTING[0],
+            new=DELETE_QUOTING[1],
+            nodeid=SPACED,
+            expect="spaced value must be quoted",
+        )
+    finally:
+        os.chmod(subject, stat.S_IWRITE)
+    assert verdict.name == mutations.UNWRITABLE, verdict.detail
+    assert subject.read_bytes() == before
+    assert mutations.UNWRITABLE in mutations.UNEVALUABLE, "an unwritable target could read as green"
+
+
+def test_the_mode_is_reapplied_after_the_replace_not_before(tmp_path: Path, monkeypatch):
+    # Structural, and it runs everywhere. It proves the *call* and its
+    # ordering, not the resulting mode -- Windows exposes no mode bits to
+    # observe, so the effect is only ever checkable on POSIX. Kept because it
+    # runs on the machine where the edit happens: delete the chmod and this
+    # goes red immediately rather than at PR time.
+    target = tmp_path / "subject.py"
+    target.write_bytes(b"original")
+    order: list[str] = []
+    real_replace, real_chmod = mutations.os.replace, mutations.os.chmod
+
+    monkeypatch.setattr(
+        mutations.os, "replace", lambda s, d: (order.append("replace"), real_replace(s, d))[1]
+    )
+    monkeypatch.setattr(
+        mutations.os, "chmod", lambda p, m: (order.append("chmod"), real_chmod(p, m))[1]
+    )
+    mutations._write_atomic(target, b"mutated")
+    assert order == ["replace", "chmod"], order
+
+
+@pytest.mark.skipif(os.name != "posix", reason="Windows has no mode bits to preserve")
+def test_a_write_preserves_the_targets_mode(tmp_path: Path):
+    # The control itself, observable only here. `mkstemp` creates at 0600, so
+    # without the reapplied mode the target comes back 0600 instead of 0644 --
+    # a narrowing git would not report, since it tracks only the executable bit.
+    assert os.name == "posix", "this canary only means anything on POSIX"
+    target = tmp_path / "subject.py"
+    target.write_bytes(b"original")
+    chosen = 0o644
+    # The fixture's own premise, asserted rather than assumed. This passes
+    # because 0o644 differs from what `mkstemp` leaves; set the fixture to
+    # 0o600 and the assertion below would hold whether or not the mode was
+    # ever reapplied. That is the same shape as a path fixture with no space
+    # in it -- the code would be unobserved and the test still green.
+    handle, probe_staging = tempfile.mkstemp(dir=tmp_path)
+    os.close(handle)
+    default = stat.S_IMODE(os.stat(probe_staging).st_mode)
+    os.unlink(probe_staging)
+    assert chosen != default, (
+        f"the fixture mode {oct(chosen)} equals what mkstemp leaves; this canary "
+        "would pass without the mode ever being reapplied"
+    )
+    os.chmod(target, chosen)
+    mutations._write_atomic(target, b"mutated")
+    assert stat.S_IMODE(target.stat().st_mode) == chosen
+    assert target.read_bytes() == b"mutated"
 
 
 def test_the_import_rule_refuses_an_entry_naming_a_module_that_is_not_there():
@@ -1241,10 +1393,12 @@ def test_the_module_docstring_tells_a_reader_how_to_run_it():
 
 
 def test_the_checklist_the_runner_claims_to_be_listed_in_lists_it():
-    # The runner's docstring points at this checklist as the one thing that
-    # causes it to be run, since there is no CI. That sentence was written
-    # before the bullet existed, which is the same defect the runner exists to
-    # catch: a stated control that was not built. Pinned so the claim and the
+    # The runner's docstring points at this checklist. It is no longer the only
+    # thing that causes the runner to be run -- CI does too, pinned separately
+    # by `test_ci_runs_the_mutation_runner` -- but the pointer still has to
+    # resolve. The sentence it pins was written before the bullet existed,
+    # which is the same defect the runner exists to catch: a stated control
+    # that was not built. Pinned so the claim and the
     # thing it claims cannot drift apart again.
     doc = mutations.__doc__ or ""
     assert "docs/maintenance.md" in doc, "the runner no longer names a checklist"
@@ -1291,6 +1445,52 @@ def test_the_watched_set_covers_every_file_the_table_can_mutate():
     for item in mutations.load_table():
         assert ROOT / item.target in watched, f"{item.name}'s target is not watched"
     assert ROOT / "src" / "agent_workflows_harness" / "cli.py" in watched
+
+
+def test_the_full_suite_precondition_collects_the_self_check():
+    # What makes `--skip-self-check` safe. It skips the *dedicated* run; the
+    # canaries still execute because `_full_suite_is_green` runs the whole
+    # suite and `pytest.ini` sets `testpaths = tests`. Nothing pinned that.
+    # `test_the_runner_is_not_collected_by_the_suite` asserts mutations.py is
+    # NOT collected; this asserts the self-check IS. Narrow `testpaths` or
+    # rename the file and the flag quietly becomes what its old warning
+    # claimed -- with CI passing it on every run.
+    collected = mutations._collected_node_ids(ROOT)
+    assert collected, "no node ids were enumerated, so this assertion proves nothing"
+    assert any(node.startswith("tests/test_mutations.py::") for node in collected)
+
+
+def test_ci_runs_the_mutation_runner():
+    # The runner's docstring and docs/maintenance.md now both claim CI grades
+    # the table. This makes that a checked claim rather than a sentence, the
+    # same way the checklist pointer is checked. Delete the step and it goes
+    # red.
+    workflow = ROOT / ".github" / "workflows" / "ci.yml"
+    assert workflow.exists(), "the workflow the prose names does not exist"
+    text = workflow.read_text(encoding="utf-8")
+
+    # Comment lines are stripped first, and the assertion is on the command
+    # rather than the bare path. Matching the whole file for "tests/mutations.py"
+    # was satisfied by a comment that mentions it: replacing the entire grading
+    # step with `echo nothing` left this test green, under a failure message
+    # reading "CI does not run the mutation runner". Same shape as asserting a
+    # flag name against argparse's usage banner -- a haystack that holds the
+    # token whether or not the behaviour is there.
+    commands = [
+        line.strip()
+        for line in text.splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    ]
+    assert commands, "no non-comment lines found, so the assertions below prove nothing"
+    assert any(
+        line.startswith("run:") and "tests/mutations.py" in line for line in commands
+    ), "CI does not run the mutation runner"
+    # The floor `requires-python` declares must be a cell, or the claim that
+    # CI checks it is untrue. A substring rather than a YAML parse: PyYAML is
+    # not a dependency and adding one to read four lines is not worth it.
+    floor = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert 'requires-python = ">=3.11"' in floor, "the declared floor moved; update the matrix"
+    assert '"3.11"' in text, "the declared floor is not a matrix cell"
 
 
 def test_the_lock_file_the_runner_creates_is_ignored():

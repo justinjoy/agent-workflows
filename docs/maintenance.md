@@ -33,8 +33,10 @@ Before committing documentation or workflow changes:
   behavior one pins. It deletes each behavior in the table and checks that the
   named test goes red; an entry reported `SURVIVED` is a tripwire that stopped
   catching its mutation, and an entry reported `STALE` is one the table can no
-  longer evaluate. Neither is visible from a green suite. This repo has no CI,
-  so this checklist is the only thing that causes it to be run.
+  longer evaluate. Neither is visible from a green suite. CI grades the table
+  on every pull request; run it locally anyway when you change a contract test,
+  so a `SURVIVED` entry is something you find rather than something the PR
+  tells you about afterwards.
 - Know what that green covers before you trust it. The table currently holds
   **5 entries covering 4 tests**, so a clean run says nothing about any other
   test you may have changed. That figure is pinned by
