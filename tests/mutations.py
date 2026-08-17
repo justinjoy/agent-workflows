@@ -108,11 +108,20 @@ Adding an entry
 4. Keep `expect` free of memory addresses; the table lint rejects them, because
    an address changes every run.
 
-A non-Python target (a document, a manifest) is allowed: leave `module` unset
-and oracle 1 is skipped for that entry, since "it still imports" means nothing
-about Markdown. The other five apply unchanged. `doc-fence-scan` is that case,
-and `test_a_target_that_is_not_python_skips_only_the_import_oracle` in the
+A non-Python target is allowed: leave `module` unset and oracle 1 is skipped
+for that entry, since "it still imports" means nothing about Markdown. The
+other five apply unchanged. `doc-fence-scan` is that case, and
+`test_a_target_that_is_not_python_skips_only_the_import_oracle` in the
 self-check keeps the path exercised even if that entry ever leaves.
+
+That exemption is for **prose**, where validity is not a meaningful predicate:
+any byte change to Markdown is a valid mutation, so oracle 1 is inapplicable
+rather than merely unenforced. It does not extend to a *structured* target --
+a JSON manifest, a YAML block -- where "it still parses" is the exact analogue
+of oracle 1 and its absence would be a real gap. An entry targeting one should
+carry a validity check rather than inherit this exemption. No such entry
+exists, which is why there is no such check: a control for a format nothing
+uses could not be falsified against anything.
 
 What this seed does not cover
 -----------------------------
@@ -133,6 +142,7 @@ summary line states both so a green cannot be read as more than it is:
 from __future__ import annotations
 
 import argparse
+import ast
 import os
 import re
 import shutil
@@ -255,6 +265,49 @@ class NodeResult:
     outcome: str
     message: str = ""
     detail: str = ""
+
+
+def platform_gated_canaries(source: Path) -> dict[str, str]:
+    """Map each platform-gated test to the `os.name` its marker requires.
+
+    Lives here rather than in the workflow because two callers need the *same*
+    answer: the CI step that judges each canary against its marker, and
+    `test_every_platform_marker_uses_the_form_ci_can_parse`, which exists to
+    notice a canary this cannot see.
+
+    They were separate copies for one round, and that made the guard useless
+    for its main purpose -- measured: degrading the workflow's copy so it
+    dropped one canary left the suite entirely green, because the guard was
+    comparing against a transcription rather than against the extractor. A
+    guard that checks a replica establishes only that the replica agrees.
+
+    Deliberately narrow: top-level `def` with `skipif(os.name != <literal>)`.
+    Everything it cannot see -- a class-nested test, an `async def`, a
+    different comparison -- is caught in the suite by comparing a broader walk
+    against this function's output, which is why this one does not need to
+    grow.
+    """
+
+    found: dict[str, str] = {}
+    for node in ast.parse(source.read_text(encoding="utf-8")).body:
+        if not isinstance(node, ast.FunctionDef):
+            continue
+        for dec in node.decorator_list:
+            if not isinstance(dec, ast.Call) or not dec.args:
+                continue
+            if not ast.unparse(dec.func).endswith("skipif"):
+                continue
+            test = dec.args[0]
+            if (
+                isinstance(test, ast.Compare)
+                and ast.unparse(test.left) == "os.name"
+                and isinstance(test.ops[0], ast.NotEq)
+                and isinstance(test.comparators[0], ast.Constant)
+            ):
+                found[f"{source.as_posix()}::{node.name}"] = ast.literal_eval(
+                    test.comparators[0]
+                )
+    return found
 
 
 def _node_id(case: ET.Element) -> str:
@@ -484,14 +537,26 @@ def probe(
     `importable` is `(dotted_name, sys_path_entry)`, or None to skip oracle 1
     for a target that is not importable Python.
 
-    `path` and `cwd` are an invariant pair, not two conveniences: the file
-    mutated must live in the tree pytest runs in. `run_table` used to take the
-    two halves separately and a caller omitted one, grading a fixture while
-    pointing at the real repository -- so that function now takes a single
-    `root`. Here they stay separate because the self-check genuinely needs a
-    `cwd` distinct from the target's parent. If a third caller ever appears,
-    collapse this too rather than adding an assertion; an unrepresentable
-    state beats a check somebody has to remember.
+    `path` and `cwd` stay separate, and the reason is the signature rather
+    than the caller count. `run_table` was collapsed to a single `root`
+    because its two halves had **independent defaults** -- `cwd` fell back to
+    the module global and `root` to None -- so a caller could pass one and
+    silently inherit the other, and one did, grading a fixture while pointing
+    at the real repository. Both parameters here are required of every caller,
+    so that divergence cannot be represented **by omission** -- and that is the
+    whole claim. `probe(path=<a fixture file>, cwd=<the real repo>)` is still
+    accepted and returns STALE; what changed is that a caller must now write
+    both and write them wrong, rather than write one and inherit the other.
+    A reduction in likelihood, not in possibility, and enough to decline.
+
+    Collapse this only if either parameter ever gains a default. That is the
+    hazard; an earlier note said "when a third caller appears", which measures
+    something else and has already fired without changing the answer.
+
+    Note also that collapsing is *possible* -- `probe(root, target)` deriving
+    both, the way `run_table` does, reproduces every call site exactly and
+    keeps `cwd != path.parent` where the self-check needs it. It is declined
+    because there is nothing to fix, not because it cannot be done.
     """
 
     if old == new:
@@ -700,7 +765,13 @@ entry(
         "tests/test_ontology.py::"
         "test_a_rejected_fact_points_at_the_flag_that_lists_the_vocabulary"
     ),
-    expect="run --print-ontology to list the declared vocabulary",
+    # Pins the rendered comparison, not the bare hint text. The hint alone is a
+    # literal at tests/test_ontology.py:445, so it is in that test's longrepr
+    # whether or not this mutation is what broke it -- the one entry of five
+    # whose pin was source-echoable. pytest renders the needle in *single*
+    # quotes where the source uses double, so this form cannot appear in a
+    # source echo. Observed through --emit-expect, not composed.
+    expect="assert 'run --print-ontology to list the declared vocabulary' in",
     note=(
         "A rejected --touches or --scope exits 2 with an empty stdout, so the "
         "hint is the only thing telling a caller how to learn the accepted "
