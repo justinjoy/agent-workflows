@@ -18,6 +18,11 @@ Thumbs.db
 __pycache__/
 *.py[cod]
 .pytest_cache/
+
+# Left behind only by a mutation run that was killed before it could clean up.
+# The staging file is the one that lands inside src/, beside the mutated file.
+.mutations.lock
+.mutations-*
 .venv/
 venv/
 build/
