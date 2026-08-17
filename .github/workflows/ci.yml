@@ -102,44 +102,104 @@ jobs:
       # record instead -- the same reasoning the mutation runner already
       # encodes for its own verdicts, applied to CI.
       #
-      # Two-sided on purpose. Asserting only "the one that should run, ran"
-      # leaves the skip-detection branch dormant on every green run: a control
-      # that fires only when something is wrong is a control nobody has seen
-      # work. Asserting the complementary canary IS skipped exercises both
-      # branches of the parse every time, and notices if either `skipif`
-      # marker drifts.
-      - name: Each platform-only canary ran where it should and skipped where it should not
+      # Every canary is judged against its own marker, so on any runner some
+      # run and some skip and both branches of the parse execute. A check that
+      # only ever fires when something is wrong is one nobody has seen work.
+      #
+      # The canary list is derived here rather than written down. An earlier
+      # version named two nodeids in `env:`, and a third gated canary landed
+      # without being added -- so the enumeration was hand-maintained, which is
+      # the defect the test suite spent a whole change removing from itself.
+      #
+      # Pinning that list with a test would not have helped: a check that the
+      # workflow's *text* names each canary is satisfied by an `env:` entry
+      # nothing reads, and by a comment. Deriving dissolves the item instead,
+      # and a fourth canary is covered the day it lands.
+      #
+      # `ast`, not a regex: the decorator is structure, and this repo has been
+      # bitten by substring-matching things it should have parsed.
+      - name: Every platform-gated canary ran where its own marker says it should
         shell: bash
-        env:
-          MODE_CANARY: tests/test_mutations.py::test_a_write_preserves_the_targets_mode
-          LEAK_CANARY: tests/test_mutations.py::test_a_read_only_target_fails_without_leaking_a_staging_file
-          # On Linux the mode canary must run and the read-only one must skip;
-          # on Windows the reverse. An inverted `skipif` fails here rather than
-          # passing quietly.
-          EXPECT_RAN: ${{ runner.os == 'Linux' && 'MODE' || 'LEAK' }}
         run: |
-          python -m pytest -q -p no:cacheprovider --junit-xml=observed.xml \
-            "$MODE_CANARY" "$LEAK_CANARY"
           python - <<'PY'
-          import os, sys, xml.etree.ElementTree as ET
+          import importlib.util, os, shutil, subprocess, sys, tempfile
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
 
-          names = {"MODE": os.environ["MODE_CANARY"], "LEAK": os.environ["LEAK_CANARY"]}
-          ran_key = os.environ["EXPECT_RAN"]
-          skipped_key = "LEAK" if ran_key == "MODE" else "MODE"
+          SOURCE = Path("tests/test_mutations.py")
 
-          records = {}
-          for case in ET.parse("observed.xml").getroot().iter("testcase"):
-              nodeid = case.get("classname", "").replace(".", "/") + ".py::" + case.get("name", "")
-              records[nodeid] = case
-          if len(records) != 2:
-              sys.exit(f"expected both canaries in the report, got {sorted(records)}")
+          # The extraction lives in tests/mutations.py, not here. Two callers
+          # need the same answer -- this step, and the suite guard that exists
+          # to notice a canary the extraction cannot see -- and while they were
+          # separate copies the guard checked a transcription instead of the
+          # extractor. Measured: dropping a canary from this copy left the
+          # suite green.
+          spec = importlib.util.spec_from_file_location("_ci_mutations", "tests/mutations.py")
+          runner = importlib.util.module_from_spec(spec)
+          # Registered before exec: `@dataclass` resolves annotations through
+          # `sys.modules[cls.__module__].__dict__`, so an unregistered module
+          # raises while defining `Verdict`. Found by running this step
+          # locally, not by reading it.
+          sys.modules[spec.name] = runner
+          spec.loader.exec_module(runner)
 
-          ran, skipped = names[ran_key], names[skipped_key]
-          if records[ran].find("skipped") is not None:
-              sys.exit(f"{ran} was skipped on this runner, so nothing observed it")
-          if records[skipped].find("skipped") is None:
-              sys.exit(f"{skipped} was not skipped here; its platform guard has drifted")
-          print(f"observed: {ran} ran; {skipped} correctly skipped")
+          canaries = runner.platform_gated_canaries(SOURCE)
+          # Fail closed. A broken walk finding nothing would otherwise pass
+          # vacuously -- a derived haystack with no guard that it is derived,
+          # inside the fix for a hand-maintained list.
+          if not canaries:
+              sys.exit(f"no platform-gated canaries found in {SOURCE}; the extraction broke")
+          print(f"derived {len(canaries)} platform-gated canaries")
+
+          # `test_every_platform_marker_uses_the_form_ci_can_parse` is what
+          # keeps the walk above honest: it fails in the suite the day a
+          # marker is written in a form this cannot read, rather than letting
+          # the canary vanish from the derived set in silence.
+
+          # Into a temp dir, the way `_run_node` does it. Writing the report
+          # into the working directory left an untracked `observed.xml` in the
+          # repo every time someone ran this step by hand -- and this is the
+          # step people run by hand, because it is the one the suite cannot
+          # exercise. No stray file beats an ignored stray file.
+          workdir = tempfile.mkdtemp(prefix="ci-canaries-")
+          try:
+              report = Path(workdir) / "result.xml"
+              subprocess.run(
+                  [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider",
+                   "--junit-xml", str(report), *canaries],
+                  check=False,
+              )
+              if not report.exists():
+                  sys.exit("pytest wrote no JUnit report; it failed before running anything")
+
+              # Reuse the runner's own reconstruction rather than rebuilding it
+              # here. It is the one piece of this step that already has
+              # canaries. It does not cover a canary nested in a class --
+              # `classname=tests.test_mutations.TestGroup` rebuilds to
+              # `tests/test_mutations/TestGroup.py::…`, which is not a nodeid --
+              # but that canary is invisible to the walk above anyway, and the
+              # marker guard in the suite is what catches it.
+              records = {
+                  runner._node_id(case): case
+                  for case in ET.parse(report).getroot().iter("testcase")
+              }
+          finally:
+              shutil.rmtree(workdir, ignore_errors=True)
+
+          missing = sorted(set(canaries) - set(records))
+          if missing:
+              sys.exit(f"the report holds no record for: {missing}")
+
+          for nodeid, wants in sorted(canaries.items()):
+              skipped = records[nodeid].find("skipped") is not None
+              should_skip = os.name != wants
+              if skipped != should_skip:
+                  sys.exit(
+                      f"{nodeid} wants os.name == {wants!r} and this runner is {os.name!r}, "
+                      f"so it should {'skip' if should_skip else 'run'} -- "
+                      f"but it {'skipped' if skipped else 'ran'}"
+                  )
+              print(f"  {'skipped' if skipped else 'ran':8} (wants {wants}) {nodeid}")
           PY
 
   mutations:

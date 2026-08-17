@@ -94,6 +94,20 @@ def the_working_tree_is_untouched():
     Derived from the table rather than hardcoded, so a new entry is covered the
     day it lands. See `watched_targets` for why the derivation is guarded
     before the constant joins it.
+
+    This teardown assertion has no falsifier, deliberately. Closing it needs
+    `pytester` and a nested pytest run so a fixture can assert on itself, and
+    `pytester`'s fixture is not registered until a `conftest.py` enables it --
+    a file this repo does not have. The price is not worth paying for a second
+    guard behind a first one that is falsifiable and has been falsified: the
+    `root` collapse in `run_table` and `emit_expect`, which takes three
+    canaries red.
+
+    The cheap partial fix is worse than leaving it open, so name it here:
+    extracting the before/after comparison into a helper and unit-testing that
+    would falsify a dict comparison and leave the autouse module-scoped wiring
+    -- the load-bearing half -- exactly as unobserved, while looking like
+    closure. An open gap says it is open.
     """
 
     before = {path: path.read_bytes() for path in watched_targets()}
@@ -643,6 +657,21 @@ def test_every_verdict_the_runner_can_produce_lands_in_a_bucket(capsys):
     )
     assert len(every) >= 9, f"only {len(every)} verdicts derived; the derivation broke"
     assert mutations.UNWRITABLE in every and mutations.CAUGHT in every
+    # The derivation reads a naming convention -- NAME = "NAME" -- and nothing
+    # enforces that convention. A verdict written `TIMED_OUT = "timeout"` would
+    # escape it, and neither the floor above nor a new-constant probe would
+    # notice. This runs the other direction: the buckets must be covered by the
+    # derived names.
+    #
+    # Not the same as deriving the expectation from the buckets, which would be
+    # self-consistent and anchored to nothing -- removing a member would remove
+    # it from both sides. Here the two sources are different: `every` comes from
+    # the module's constants, the buckets from its set definitions. Neither
+    # catches a verdict that is both unconventionally named and unbucketed;
+    # `report_results`' runtime partition guard is what covers that.
+    assert set(mutations.UNEVALUABLE) | {mutations.CAUGHT, mutations.SURVIVED} <= set(every), (
+        "a bucketed verdict is missing from the derivation; check its constant's value"
+    )
     rows = [_verdict_row(f"e{index}", name) for index, name in enumerate(every)]
     code = mutations.report_results(rows)
     out = capsys.readouterr().out
@@ -1264,6 +1293,16 @@ def test_every_entry_is_complete_and_distinct():
         assert mutations.undiscriminating_expect(item.expect) is None, (
             f"{item.name}: {mutations.undiscriminating_expect(item.expect)}"
         )
+        # Defence in depth on a convention, not a repair -- no entry omits
+        # `module` today. `module=None` became legitimate when doc-fence-scan
+        # landed, so a *forgotten* field is now indistinguishable from an
+        # intended omission, and the consequence is a misdirected diagnosis:
+        # the entry reads NO_SUCH_TEST, which the runner's vocabulary means as
+        # "the table needs updating", for an author who only left out a field.
+        #
+        # Called rather than inlined, so the shipped table and the canaries
+        # below exercise the same assertion and cannot drift apart.
+        _lint_entry(item)
         key = (item.target, item.old, item.new)
         assert key not in seen, f"{item.name} duplicates another entry's mutation"
         seen.add(key)
@@ -1272,6 +1311,140 @@ def test_every_entry_is_complete_and_distinct():
     # mutually satisfiable before `expect` moved to the message attribute.
     pins = [item.expect for item in table]
     assert len(pins) == len(set(pins)), "two entries pin the same failure message"
+
+
+def test_every_platform_marker_uses_the_form_ci_can_parse():
+    # The CI step derives the platform-gated canaries by walking this file's
+    # AST for `skipif(os.name != <literal>)`. That derivation removed a
+    # hand-maintained list -- but it depends on a convention nothing enforced,
+    # one level down: a canary written `skipif(sys.platform == "win32")`, or
+    # with `==` instead of `!=`, is dropped from the derived set in silence.
+    #
+    # A derived haystack whose derivation *rule* is unguarded is the same shape
+    # as one whose emptiness is unguarded. This is the analogue of the subset
+    # assertion on the verdict list: that guards the naming convention its
+    # derivation reads, this guards the marker convention.
+    #
+    # It also matters where this check lives. The extraction itself sits in a
+    # workflow heredoc the suite cannot run, so its first observer is a CI run.
+    # This moves the falsifiable part back into the suite.
+    # This guard walks **more broadly than the extractor it guards**. The CI
+    # step reads `ast.parse(...).body` and `ast.FunctionDef`, which is
+    # top-level-only and excludes `async def`; a guard sharing that traversal
+    # would be blind exactly where the thing it guards is blind, and a gated
+    # canary nested in a class would vanish from both. `ast.walk` plus both
+    # function node types is deliberate: a guard is allowed to be stricter than
+    # what it checks, because its whole job is to notice what that would miss.
+    source = ROOT / "tests" / "test_mutations.py"
+    tree = ast.parse(source.read_text(encoding="utf-8"))
+    functions = [
+        node for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    ]
+
+    markers = [
+        node.name for node in functions
+        if any(
+            isinstance(dec, ast.Call) and ast.unparse(dec.func).endswith("skipif")
+            for dec in node.decorator_list
+        )
+    ]
+    assert markers, "no skipif markers found, so this assertion proves nothing"
+
+    # Compare against what the extractor *derives*, not against the marker's
+    # form. Checking the form alone was blind in a way that took measuring to
+    # see: a canary nested in a class, or written `async def`, carries a
+    # perfectly parseable `skipif(os.name != "nt")`, so a form check has
+    # nothing to complain about -- while the CI walk, being top-level and
+    # `FunctionDef`-only, never sees it at all. The guard reported health for a
+    # canary that had no observer.
+    #
+    # So this replicates the extractor's traversal exactly and asserts the two
+    # sets agree. Broad walk finds every gated canary; narrow walk finds the
+    # ones CI will actually judge; anything in the first and not the second is
+    # unobserved, whatever the reason.
+    # Calls the real extractor, not a copy of it. This was a transcription for
+    # one round, and that made the guard useless for its main purpose --
+    # degrading the extractor so it dropped a canary left this test green,
+    # because it was comparing the broad walk against a replica that had not
+    # changed. A guard that checks a copy establishes only that the copy agrees.
+    derived = [
+        nodeid.split("::", 1)[1] for nodeid in mutations.platform_gated_canaries(source)
+    ]
+
+    unobserved = sorted(set(markers) - set(derived))
+    assert not unobserved, (
+        "CI derives platform canaries by walking top-level `def`s for "
+        "`skipif(os.name != <literal>)`. These carry a skipif marker it will not "
+        f"derive, so they would run or skip with nothing observing them: {unobserved}"
+    )
+
+    # Second observer, by a different mechanism. Every gated canary also
+    # asserts its own platform in-body, so the two conventions must agree in
+    # count. A canary that carries one and not the other is caught here even if
+    # the marker walk above were to go wrong -- the same two-independent-means
+    # construction that makes the UNWRITABLE property hold.
+    in_body = [
+        node.name for node in functions
+        if any(
+            isinstance(stmt, ast.Assert)
+            and isinstance(stmt.test, ast.Compare)
+            and ast.unparse(stmt.test.left) == "os.name"
+            and isinstance(stmt.test.ops[0], ast.Eq)
+            for stmt in ast.walk(node)
+        )
+    ]
+    assert sorted(in_body) == sorted(markers), (
+        "every platform-gated canary must both carry a skipif marker and assert its "
+        f"platform in-body; markers={sorted(markers)} in-body={sorted(in_body)}"
+    )
+
+
+def test_a_python_target_without_a_module_is_refused():
+    # The falsifier for the lint above. Without it that lint ships as a guard
+    # nobody has watched work, in a change whose subject is guards nobody has
+    # watched work.
+    forgot = mutations.Entry(
+        name="forgot",
+        target="src/agent_workflows_harness/cli.py",
+        old="old",
+        new="new",
+        test="tests/test_x.py::test_y",
+        expect="AssertionError: something",
+        note="a note",
+    )
+    assert forgot.module is None
+    assert forgot.target.endswith(".py")
+    with pytest.raises(AssertionError, match="sets no module"):
+        _lint_entry(forgot)
+
+
+def test_a_non_python_target_may_omit_its_module():
+    # The complement. Without it the lint is satisfiable by rejecting every
+    # entry, which would break `doc-fence-scan` -- the entry that made
+    # `module=None` legitimate in the first place.
+    document = mutations.Entry(
+        name="prose",
+        target="docs/how-it-works.md",
+        old="old",
+        new="new",
+        test="tests/test_x.py::test_y",
+        expect="AssertionError: something",
+        note="a note",
+    )
+    _lint_entry(document)
+
+
+def _lint_entry(item) -> None:
+    """The per-entry half of `test_every_entry_is_complete_and_distinct`.
+
+    Extracted so the module lint has a falsifier that does not require
+    mutating the shipped table.
+    """
+
+    assert item.module or not item.target.endswith(".py"), (
+        f"{item.name} targets Python but sets no module, so oracle 1 is silently skipped"
+    )
 
 
 def test_no_anchor_spans_more_than_one_line():
@@ -1488,9 +1661,35 @@ def test_ci_runs_the_mutation_runner():
     # The floor `requires-python` declares must be a cell, or the claim that
     # CI checks it is untrue. A substring rather than a YAML parse: PyYAML is
     # not a dependency and adding one to read four lines is not worth it.
+    #
+    # Matched against `commands`, not the raw text, for the same reason the
+    # assertion above is: a comment can satisfy a substring check. This one
+    # fired correctly anyway, but only by punctuation -- the single comment
+    # naming the floor writes it `">=3.11"`, which puts `=` where the needle
+    # needs `"`. Right for a reason about quoting is not right.
     floor = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     assert 'requires-python = ">=3.11"' in floor, "the declared floor moved; update the matrix"
-    assert '"3.11"' in text, "the declared floor is not a matrix cell"
+    assert any('"3.11"' in line for line in commands), "the declared floor is not a matrix cell"
+
+    # The workflow must delegate the canary extraction rather than carry a copy
+    # of it. It held its own `gated()` for one round, and the suite guard held a
+    # transcription of the same rule, so the guard checked a replica: degrading
+    # the workflow's copy so it dropped a canary left the suite green.
+    #
+    # Two assertions, and the second is the load-bearing one -- "calls the
+    # shared function" is satisfiable while *also* keeping a local copy, so only
+    # "does no extraction of its own" closes the path back.
+    #
+    # Against `commands` rather than the raw text, for the same reason as the
+    # floor check above: a comment mentioning `def gated` satisfies a raw match.
+    assert any("platform_gated_canaries" in line for line in commands), (
+        "the workflow does not call the shared extractor"
+    )
+    inlined = [line for line in commands if "ast." in line or line.startswith("def ")]
+    assert not inlined, (
+        "the workflow parses tests itself instead of delegating; a second copy of the "
+        f"extraction rule is what made the suite guard check a replica: {inlined}"
+    )
 
 
 def test_the_lock_file_the_runner_creates_is_ignored():
