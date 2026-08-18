@@ -19,6 +19,11 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 
+# Written by --graph when it is deliberately pointed at the repo (a mistyped
+# directory exits 2 before any write). Anchored to the root: that is where
+# `--graph .` lands, and a graph committed on purpose elsewhere stays visible.
+/agent-workflows-*.dot
+
 # Left behind only by a mutation run that was killed before it could clean up.
 # The staging file is the one that lands inside src/, beside the mutated file.
 .mutations.lock

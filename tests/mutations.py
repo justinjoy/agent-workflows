@@ -126,7 +126,7 @@ uses could not be falsified against anything.
 What this seed does not cover
 -----------------------------
 
-Five entries across three files. The three the issue names by test are all
+Nine entries across four files. The three the issue names by test are all
 here; what is not covered is everything else. Two things follow, and the
 summary line states both so a green cannot be read as more than it is:
 
@@ -699,6 +699,8 @@ def _restore(path: Path, original: bytes) -> None:
 
 CLI = "src/agent_workflows_harness/cli.py"
 CLI_MODULE = "agent_workflows_harness.cli"
+DOTGRAPH = "src/agent_workflows_harness/dotgraph.py"
+DOTGRAPH_MODULE = "agent_workflows_harness.dotgraph"
 ONTOLOGY = "src/agent_workflows_harness/ontology.py"
 ONTOLOGY_MODULE = "agent_workflows_harness.ontology"
 
@@ -816,6 +818,98 @@ entry(
         "of them extracted zero flags from the file it existed to read. This "
         "is also the table's only non-Python target, so it is what keeps the "
         "module=None path exercised by data rather than by a canary alone."
+    ),
+)
+
+
+entry(
+    name="graph-run-layer",
+    target=DOTGRAPH,
+    module=DOTGRAPH_MODULE,
+    old='                label=f"{skill.order} · {skill.reason}",',
+    new='                label="",',
+    test=(
+        "tests/test_dotgraph.py::"
+        "test_the_graph_highlights_this_runs_selection_and_not_only_the_tbox"
+    ),
+    # Truncated at the same place `vocabulary-hint` truncates: the observed
+    # line continues into the whole rendered graph, which would go STALE on any
+    # styling change. What is kept is the captured needle -- the reason that
+    # went missing -- not a belief about the rest of the line.
+    expect="assert 'every_code_change_requires_review' in",
+    note=(
+        "The reason label is the whole of why a run's graph is worth more than "
+        "a TBox dump: without it the file still names every skill, because the "
+        "TBox's skill_class rows name them too. That is the vacuous-haystack "
+        "shape -- a presence assertion satisfied by the layer the test is not "
+        "about -- so the test it names is differential, and this entry is what "
+        "proves the difference is the part that carries the reason."
+    ),
+)
+
+entry(
+    name="graph-write-warning",
+    target=CLI,
+    module=CLI_MODULE,
+    old='        print(f"graph not written: {args.graph!r}: {exc}", file=sys.stderr)',
+    new="        pass",
+    test=(
+        "tests/test_harness.py::"
+        "test_an_unwritable_graph_directory_never_suppresses_the_answer"
+    ),
+    expect="assert 'graph not written' in ''",
+    note=(
+        "A failed graph write must not change the exit code, which leaves the "
+        "stderr line as the only evidence it was attempted at all. Dropping it "
+        "makes an unwritable directory indistinguishable from a run that was "
+        "never asked for a graph -- the silence f704f69 rejected for the "
+        "decision log, reached by a different route."
+    ),
+)
+
+
+entry(
+    name="graph-row-order",
+    target=DOTGRAPH,
+    module=DOTGRAPH_MODULE,
+    old="    rows = sorted(rows)",
+    new="    rows = list(rows)",
+    test=(
+        "tests/test_dotgraph.py::"
+        "test_the_graph_content_is_deterministic_for_one_moment"
+    ),
+    expect="AssertionError: row order in the TBox reached the output",
+    note=(
+        "The determinism test this pins was itself the defect once: comparing "
+        "two builds from one Ontology satisfied it through per-process "
+        "iteration order, so every sorted() in the module could be deleted "
+        "with the suite green. It now builds from a row-permuted TBox, and "
+        "this entry is what proves that rewrite discriminates."
+    ),
+)
+
+
+entry(
+    name="graph-scope-prefix",
+    target=ONTOLOGY,
+    module=ONTOLOGY_MODULE,
+    old='            source=f"scope(req, {scope})",',
+    new='            source=f"scope(request, {scope})",',
+    test=(
+        "tests/test_dotgraph.py::"
+        "test_a_derivation_from_the_real_producer_resolves_to_declared_nodes"
+    ),
+    # The undeclared node itself, which names the defect exactly: a scope
+    # rendered as a class. Captured, not composed.
+    expect='AssertionError: {\'"cls:one_line"\'}',
+    note=(
+        "dotgraph._path_nodes recognises a scope path by this prefix, so the "
+        "string is an interface between two modules and not a message. Every "
+        "other graph test hand-builds a Derivation with the prefix copied in, "
+        "which duplicates the format rather than depending on it: rewording it "
+        "here left the whole suite green twice while a real --scope run drew a "
+        "node nothing declares. This entry is what makes the one test that "
+        "reads the producer's own output the one that has to stay."
     ),
 )
 
