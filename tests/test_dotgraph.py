@@ -52,6 +52,17 @@ def _plan(*, selected=(("10", "inspect-repository", "code_change_requires_reposi
     )
 
 
+def _unescape(text: str) -> str:
+    """Undo DOT's string escaping.
+
+    A generic inverse over `\\(.)` rather than a copy of _escape's ordered
+    replaces: restating those would make an assertion agree with the
+    implementation by construction.
+    """
+
+    return re.sub(r"\\(.)", lambda match: {"n": "\n"}.get(match.group(1), match.group(1)), text)
+
+
 def _declared_nodes(dot: str) -> set[str]:
     return {
         match.group(1)
@@ -153,24 +164,39 @@ derivations = derive(("readme", "changelog"), ("one_line",)) + (
     Derivation(request_property="needs_review", source="touches(req, changelog)",
                path=("DocSurface", "needs_review")),
 )
-sys.stdout.write(build_dot(DEFAULT_ONTOLOGY, plan, derivations,
-                           moment=datetime(2026, 8, 18, 11, 19, 7, 250000, tzinfo=UTC)))
+sys.stdout.buffer.write(build_dot(DEFAULT_ONTOLOGY, plan, derivations,
+                                  moment=datetime(2026, 8, 18, 11, 19, 7, 250000, tzinfo=UTC)
+                                  ).encode("utf-8"))
 """
 
 
 def _build_in_subprocess(seed: str) -> str:
     environment = dict(os.environ, PYTHONHASHSEED=seed)
     source = str(Path(__file__).resolve().parents[1] / "src")
+    # Bytes on both ends, because naming a codec on the child alone is
+    # silently green: the UTF-8 bytes of the graph's own glyphs are every one
+    # of them a valid cp1252 character, so a parent decoding with the ambient
+    # locale gets mojibake without raising -- the same mojibake for every seed,
+    # which is a green comparison over garbage rather than a visible failure.
+    # (Naming it on the parent alone is merely loud: the child raises first.)
+    #
+    # Text mode would also route the graph through the platform's newline
+    # translation on the way out and back on the way in. That one is a property
+    # of the transport rather than a live tripwire here -- these children all
+    # run on one platform, so a CR change would be uniform across seeds and
+    # this test could not see it either way.
     finished = subprocess.run(
         [sys.executable, "-c", _CROSS_PROCESS_BUILD.format(src=source)],
         capture_output=True,
-        text=True,
         env=environment,
     )
     # Not check=True: it renders the whole script as one escaped argv string
-    # and leaves the child's traceback sitting unread in stderr.
-    assert finished.returncode == 0, finished.stderr
-    return finished.stdout
+    # and leaves the child's traceback sitting unread in stderr. stderr decodes
+    # leniently so a traceback can never hide behind a second decode error;
+    # stdout decodes strictly, because malformed UTF-8 out of build_dot is
+    # itself the defect this test would be reporting.
+    assert finished.returncode == 0, finished.stderr.decode("utf-8", "replace")
+    return finished.stdout.decode("utf-8")
 
 
 def test_the_graph_is_byte_identical_across_processes():
@@ -184,6 +210,35 @@ def test_the_graph_is_byte_identical_across_processes():
     (only,) = outputs
     assert "label=\"derived\"" in only, "the orphan-edge branch must actually run"
     assert len(_edges(only)) > 40
+    # Every other assertion here is ASCII-only, so a transport that decoded
+    # with the ambient locale would satisfy all of them over mojibake. This
+    # glyph makes that visible: a cp1252 decode turns its three UTF-8 bytes
+    # into the three characters `âŠ‘`. It is also the only character in the
+    # graph with no cp1252 encoding at all, which is why the child crashed
+    # outright rather than mangling quietly -- `·` encodes there fine.
+    assert "⊑" in only, "the graph came back decoded with the wrong codec"
+
+
+def test_a_windows_path_in_a_label_survives_as_the_path_it_was():
+    # test_a_quote_in_a_label_cannot_break_out_of_the_dot_string already pins
+    # that a backslash is escaped, and survives an _escape that escapes it
+    # twice over. What nothing else pins is that the escaping is *invertible*:
+    # an --ontology path on Windows has to come back out of the label as the
+    # path the caller gave. _escape has no platform branch, so a hardcoded
+    # native path exercises it from any platform.
+    source = r"C:\Users\me\tbox.json"
+
+    dot = build_dot(DEFAULT_ONTOLOGY, _plan(), moment=MOMENT, source=source)
+    (label,) = [line for line in dot.splitlines() if "agent-workflows harness run" in line]
+
+    # The round-trip alone: dropping the escape makes the inverse eat `\U`,
+    # and over-escaping leaves a doubled backslash behind, so both directions
+    # fail here. A "raw path absent from the label" check would add nothing
+    # over that, and it is not universally sound either -- where a source's
+    # only backslash is a single trailing one, the correctly escaped `C:\\`
+    # still contains the raw `C:\`. That case cannot arise from this fixture,
+    # so the reason to leave the check out is redundancy, not danger.
+    assert f"ontology: {source}" in _unescape(label), "the escaping is not invertible"
 
 
 def test_the_graph_carries_the_active_tbox_rather_than_the_bundled_default():
