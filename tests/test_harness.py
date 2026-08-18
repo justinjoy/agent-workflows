@@ -56,6 +56,19 @@ def _steps(facts: RequestFacts) -> list[tuple[int, str, str]]:
     ]
 
 
+def _dot_label(dot: str) -> str:
+    """The graph's title line, with DOT's escaping undone.
+
+    A generic inverse over `\\(.)`, not a copy of _escape's ordered replaces:
+    restating those would make the assertion agree with the implementation by
+    construction. That escaping happens at all is pinned in test_dotgraph.py;
+    this only needs to read the value back.
+    """
+
+    (line,) = [item for item in dot.splitlines() if "agent-workflows harness run" in item]
+    return re.sub(r"\\(.)", lambda match: {"n": "\n"}.get(match.group(1), match.group(1)), line)
+
+
 def _subprocess_env() -> dict[str, str]:
     env = os.environ.copy()
     current = env.get("PYTHONPATH")
@@ -856,7 +869,20 @@ def test_the_plan_is_printed_before_the_graph_is_written(capsys, monkeypatch, tm
 
 
 def test_the_graph_records_which_ontology_the_run_used(capsys, tmp_path):
-    document = tmp_path / "tbox.json"
+    # A backslash in the path, so the unescape below is exercised on every
+    # runner: without one it is the identity everywhere except the Windows
+    # cell, and the assertion this replaced would still be passing here.
+    #
+    # parents=True because the two platforms read this name differently and
+    # both readings are wanted. On POSIX a backslash is an ordinary filename
+    # character, so this is one directory whose name contains it. On Windows
+    # it is the separator, so it is two nested directories -- and the
+    # backslashes then come from the separators instead, which is the shape
+    # that broke this test in the first place. Without parents=True the
+    # Windows reading fails on the missing intermediate.
+    holder = tmp_path / "Users\\me"
+    holder.mkdir(parents=True)
+    document = holder / "tbox.json"
     document.write_text(
         json.dumps(
             {
@@ -878,7 +904,13 @@ def test_the_graph_records_which_ontology_the_run_used(capsys, tmp_path):
     (written,) = list(out.iterdir())
     dot = written.read_text(encoding="utf-8")
     assert code == 0
-    assert str(document) in dot, "the label names the TBox this run was evaluated against"
+    # Against the ontology slot of the label, not anywhere in the file, and
+    # through the unescape: a Windows path is emitted with its backslashes
+    # doubled, so comparing the raw path to the raw graph fails there while
+    # passing on POSIX.
+    assert (
+        f"ontology: {document}" in _dot_label(dot)
+    ), "the label names the TBox this run was evaluated against"
     assert '"ind:billing_ledger"' in dot
     assert '"ind:session_module"' not in dot, "the bundled default leaked in"
 
