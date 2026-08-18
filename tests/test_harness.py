@@ -5,6 +5,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from importlib.metadata import version
 from pathlib import Path
 
@@ -716,6 +717,170 @@ def test_an_unwritable_decision_log_never_changes_the_failure_exit_code(
     assert code == cli.EXIT_SELECTOR_UNAVAILABLE
     assert json.loads(captured.out)["error"]["kind"] == "selector_unavailable"
     assert "decision log unavailable" in captured.err
+
+
+def test_the_graph_path_is_reported_on_stderr_and_never_on_stdout(capsys, tmp_path):
+    code = cli.main(["--property", "trivial", "--graph", str(tmp_path)])
+    captured = capsys.readouterr()
+
+    (written,) = list(tmp_path.iterdir())
+    assert code == 0
+    # stdout is a parsed contract, so the path goes to stderr and the document
+    # keeps exactly the keys it had before this flag existed.
+    assert set(json.loads(captured.out)) == {"request", "selected", "blocked"}
+    assert f"graph written: {written}" in captured.err
+    assert written.name.startswith("agent-workflows-")
+    assert written.name.endswith(".dot")
+
+
+def test_an_omitted_graph_directory_writes_into_the_system_temp_directory(
+    capsys, monkeypatch, tmp_path
+):
+    # The form both documents show, and the only one whose destination the
+    # caller does not state. Steered through tempfile.tempdir, not TMPDIR:
+    # gettempdir() memoizes into that global on its first call anywhere in the
+    # process, so the environment variable is read too early to matter here.
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+
+    code = cli.main(["--property", "trivial", "--graph"])
+    captured = capsys.readouterr()
+
+    (written,) = list(tmp_path.iterdir())
+    assert code == 0
+    assert written.parent == tmp_path, "the default landed outside the temp directory"
+    assert f"graph written: {written}" in captured.err
+
+
+def test_a_graph_directory_that_does_not_exist_is_refused_before_any_plan(capsys, tmp_path):
+    missing = tmp_path / "nope"
+
+    try:
+        cli.main(["--property", "trivial", "--graph", str(missing)])
+    except SystemExit as exc:
+        assert exc.code == 2
+    else:  # pragma: no cover
+        raise AssertionError("expected an argparse usage error")
+
+    # Refused, not created: the directory is the caller's, and creating one
+    # would turn the swallowed-request-text case below into a junk directory.
+    assert not missing.exists()
+    assert capsys.readouterr().out == ""
+
+
+def test_graph_argument_that_swallowed_the_request_text_is_refused(capsys):
+    # `nargs="?"` binds "refactor auth" to --graph and leaves the request
+    # empty, which RequestFacts fails closed to non_trivial -- a full plan for
+    # a request nobody made. Diagnosing it at write time would leave that plan
+    # on stdout, so it must exit 2 with nothing printed.
+    try:
+        cli.main(["--graph", "refactor auth module"])
+    except SystemExit as exc:
+        assert exc.code == 2
+    else:  # pragma: no cover
+        raise AssertionError("expected an argparse usage error")
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "put the request before --graph" in captured.err
+
+
+def test_an_empty_graph_value_never_writes_into_the_working_directory(capsys):
+    # Path("") is ".", an existing directory only by accident, so the guard
+    # cannot be a bare is_dir() check.
+    before = set(ROOT.iterdir())
+
+    try:
+        cli.main(["--property", "trivial", "--graph", ""])
+    except SystemExit as exc:
+        assert exc.code == 2
+    else:  # pragma: no cover
+        raise AssertionError("expected an argparse usage error")
+
+    assert set(ROOT.iterdir()) == before
+    assert capsys.readouterr().out == ""
+
+
+def test_an_unwritable_graph_directory_never_suppresses_the_answer(capsys, monkeypatch, tmp_path):
+    def _explode(directory, ontology, plan, derivations, **kwargs):
+        raise OSError("read-only file system")
+
+    monkeypatch.setattr(cli, "write_graph", _explode)
+
+    code = cli.main(["--property", "trivial", "--graph", str(tmp_path)])
+    captured = capsys.readouterr()
+
+    assert code == 0
+    assert json.loads(captured.out)["selected"]
+    assert "graph not written" in captured.err
+    assert "read-only file system" in captured.err
+
+
+def test_a_run_that_produces_no_plan_writes_no_graph_and_says_so(
+    capsys, monkeypatch, tmp_path
+):
+    # Two ways to reach "no selection": a dead runtime, and the flag that
+    # prints the vocabulary instead of selecting. Neither may leave a file
+    # behind, because the artifact is defined as the TBox plus a selection and
+    # a half-empty one under the ordinary filename reads as a real run.
+    monkeypatch.setattr(cli, "select_plan", _fail_selector("dead runtime"))
+    code = cli.main(["--property", "trivial", "--graph", str(tmp_path)])
+    failed = capsys.readouterr()
+
+    assert code == cli.EXIT_SELECTOR_UNAVAILABLE
+    assert "graph not written: selector_unavailable produced no plan" in failed.err
+    assert list(tmp_path.iterdir()) == []
+
+    assert cli.main(["--print-ontology", "--graph", str(tmp_path)]) == 0
+    printed = capsys.readouterr()
+
+    assert "graph not written: --print-ontology selects nothing to graph" in printed.err
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_the_plan_is_printed_before_the_graph_is_written(capsys, monkeypatch, tmp_path):
+    # _graph swallows only OSError and ValueError, so ordering is what keeps a
+    # graph writer bug from eating a plan the selector already computed.
+    def _explode(directory, ontology, plan, derivations, **kwargs):
+        raise RuntimeError("graph writer bug")
+
+    monkeypatch.setattr(cli, "write_graph", _explode)
+
+    try:
+        cli.main(["--property", "trivial", "--graph", str(tmp_path)])
+    except RuntimeError:
+        pass
+    else:  # pragma: no cover
+        raise AssertionError("expected the unguarded graph failure to propagate")
+
+    assert json.loads(capsys.readouterr().out)["selected"]
+
+
+def test_the_graph_records_which_ontology_the_run_used(capsys, tmp_path):
+    document = tmp_path / "tbox.json"
+    document.write_text(
+        json.dumps(
+            {
+                "sub_class_of": [["BillingSurface", "SharedBehavior"]],
+                "surface_class": [["billing_ledger", "BillingSurface"]],
+                "property_of_class": [["SharedBehavior", "touches_shared_behavior"]],
+            }
+        ),
+        encoding="utf-8",
+    )
+    out = tmp_path / "graphs"
+    out.mkdir()
+
+    code = cli.main(
+        ["--touches", "billing_ledger", "--ontology", str(document), "--graph", str(out)]
+    )
+    capsys.readouterr()
+
+    (written,) = list(out.iterdir())
+    dot = written.read_text(encoding="utf-8")
+    assert code == 0
+    assert str(document) in dot, "the label names the TBox this run was evaluated against"
+    assert '"ind:billing_ledger"' in dot
+    assert '"ind:session_module"' not in dot, "the bundled default leaked in"
 
 
 def test_cli_rejects_unknown_property_without_running_wirelog():

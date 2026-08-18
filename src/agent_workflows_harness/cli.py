@@ -3,10 +3,13 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import tempfile
+from pathlib import Path
 
 from .facts import classify_request
 from .models import RequestFacts
 from .decision_log import append_decision_record, append_failure_record
+from .dotgraph import BUNDLED_SOURCE, write_graph
 from .ontology import DEFAULT_ONTOLOGY, derive, load_ontology
 from .serialization import plan_to_dict
 from .selector import HarnessError, SelectorRuleConflictError, select_plan
@@ -116,7 +119,35 @@ def _emit_error(args: argparse.Namespace, kind: str, message: str, cause: str) -
                 sort_keys=True,
             )
         )
+    if args.graph is not None:
+        print(f"graph not written: {kind} produced no plan to graph", file=sys.stderr)
     _record(args.decision_log, append_failure_record, kind, cause)
+
+
+def _graph(args: argparse.Namespace, ontology, plan, derivations) -> None:
+    """Write this run's graph without letting the write break the run.
+
+    The same contract as _record: an unwritable target must not change the
+    exit code or suppress output already produced. It reports success too,
+    which _record does not need to: a --decision-log path was always supplied
+    by the caller, while a --graph path may have defaulted to the system temp
+    directory, and silence would leave that caller with no way to find it.
+    """
+
+    if args.graph is None:
+        return
+    try:
+        target = write_graph(
+            args.graph,
+            ontology,
+            plan,
+            derivations,
+            source=args.ontology or BUNDLED_SOURCE,
+        )
+    except (OSError, ValueError) as exc:
+        print(f"graph not written: {args.graph!r}: {exc}", file=sys.stderr)
+        return
+    print(f"graph written: {target}", file=sys.stderr)
 
 
 def _record(path: str | None, append, *record_args) -> None:
@@ -174,8 +205,29 @@ def _parser() -> argparse.ArgumentParser:
         help=(
             "Print the active TBox and exit without evaluating any facts. "
             "Honours --ontology and --text; a supplied --decision-log warns "
-            "and writes nothing; the request text, --property, --touches, and "
-            "--scope are ignored."
+            "and writes nothing; a supplied --graph warns and writes nothing "
+            "too, because there is no selection to graph; the request text, "
+            "--property, --touches, and --scope are ignored."
+        ),
+    )
+    parser.add_argument(
+        "--graph",
+        nargs="?",
+        # Evaluated per _parser() call, which main() makes per run. Note for
+        # anyone testing this: gettempdir() memoizes into tempfile.tempdir on
+        # its first call anywhere in the process, so setting TMPDIR afterwards
+        # does nothing -- a test steers it by setting that module global, or
+        # by running a subprocess.
+        const=tempfile.gettempdir(),
+        default=None,
+        metavar="DIR",
+        help=(
+            "Write a Graphviz DOT graph of this run -- the active TBox plus "
+            "the selection it produced -- into DIR, named "
+            "agent-workflows-<UTC timestamp>.dot. With no value, DIR is the "
+            "system temporary directory. DIR must already exist. The path is "
+            "reported on stderr; stdout is unchanged. A run that selects "
+            "nothing writes no graph and says so."
         ),
     )
     parser.add_argument(
@@ -194,6 +246,21 @@ def main(argv: list[str] | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(argv)
     request_text = " ".join(args.request)
+    if args.graph is not None and not (args.graph and Path(args.graph).is_dir()):
+        # `nargs="?"` cannot tell a directory from request text, and
+        # `--graph "refactor auth"` binds the text to the flag: the request
+        # goes empty, RequestFacts fails closed to non_trivial, and the run
+        # prints a plausible full plan for a request nobody made. Diagnosing
+        # that at write time would leave the wrong answer on stdout, so it
+        # exits 2 here like a bad --ontology path does.
+        #
+        # The empty value shares this check rather than getting its own:
+        # Path("") is ".", an existing directory only by accident, and writing
+        # there drops the file in the caller's working directory.
+        parser.error(
+            f"--graph: {args.graph!r} is not an existing directory; if that was "
+            "the request text, write --graph=DIR or put the request before --graph"
+        )
     try:
         ontology = load_ontology(args.ontology) if args.ontology else None
     except (OSError, ValueError) as exc:
@@ -215,6 +282,11 @@ def main(argv: list[str] | None = None) -> int:
             # rather than leave the caller believing a trace was written.
             print(
                 "decision log not written: --print-ontology selects nothing to record",
+                file=sys.stderr,
+            )
+        if args.graph is not None:
+            print(
+                "graph not written: --print-ontology selects nothing to graph",
                 file=sys.stderr,
             )
         document = (ontology or DEFAULT_ONTOLOGY).to_dict()
@@ -304,6 +376,7 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(plan_to_dict(plan, derivations), indent=2, sort_keys=True))
 
     _record(args.decision_log, append_decision_record, plan, derivations)
+    _graph(args, ontology or DEFAULT_ONTOLOGY, plan, derivations)
     return 0
 
 

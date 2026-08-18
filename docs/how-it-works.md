@@ -235,7 +235,10 @@ unobservable:
 That example is a subset: the bundled TBox has more rows in every relation.
 
 `--ontology` and `--text` still apply, and a supplied `--decision-log` warns on
-stderr rather than being dropped in silence. The request text, `--property`,
+stderr rather than being dropped in silence. A supplied `--graph` warns the
+same way and writes nothing, because there is no selection to graph -- though
+its directory is still validated first, so a bad one exits `2` here exactly as
+an `--ontology` file that fails validation does. The request text, `--property`,
 `--touches`, and `--scope` are ignored -- including `--touches` and `--scope`
 values that would otherwise be rejected, because the caller reaching for this
 flag is usually the one whose name was just refused. An `--ontology` file that
@@ -259,6 +262,45 @@ The bundled ontology also classifies every registered skill (`ReviewSkill`,
 `TestSkill`, and so on under `ValidationSkill`). The selector rules do not use
 that hierarchy yet; it is declared so rule consolidation can be verified
 against the current per-skill rules before replacing them.
+
+### Run Graph
+
+`--graph DIR` writes one run as a Graphviz DOT file, named
+`agent-workflows-<UTC timestamp>.dot`. With no value, `DIR` is the system
+temporary directory:
+
+```bash
+agent-workflows-harness --touches session_module --scope one_line --graph
+```
+
+Only the filename varies. The directory is used exactly as given, with no
+per-run subdirectory, so a caller who passes one knows where the file lands and
+a caller who passes none finds it in the system temp directory. The path is
+reported on stderr; stdout keeps the same JSON document it prints without the
+flag, because that document is a parsed contract.
+
+The graph is the active TBox *plus what this run decided*: the derived
+properties, drawn as the path each one travelled through the class hierarchy,
+and the selected and blocked skills, each edge labelled with the rule reason
+the selector returned. It draws nothing else. `needs_plan` and
+`needs_broad_tests` exist only inside the Wirelog rules and are never returned
+to a caller, so a renderer that drew them would hold a second copy of the rules
+with nothing keeping the two in sync -- the graph shows *which* skills were
+selected and the reason each one carries, not the rule structure that decided
+it.
+
+A run that produces no selection produces no graph, and says so on stderr
+rather than leaving a file that looks like a run. That covers the flag that
+prints the vocabulary and exits `0`, and the failure exits `3`, `4`, and `5`.
+
+`DIR` itself is caller input: a missing directory, or a value that is really
+the request text, exits `2` before any plan is printed rather than warning
+after one has already been shown. Because the value is optional, prefer
+`--graph=DIR` or put `--graph` last -- `--graph docs update the readme` binds
+`docs` to the flag and shortens the request. A write that fails after the
+directory checks out -- an unwritable directory, a name already taken -- warns
+on stderr and changes neither the exit code nor the plan, the same way the
+decision log does.
 
 ## Atomic Skills
 

@@ -38,7 +38,7 @@ Before committing documentation or workflow changes:
   so a `SURVIVED` entry is something you find rather than something the PR
   tells you about afterwards.
 - Know what that green covers before you trust it. The table currently holds
-  **5 entries covering 4 tests**, so a clean run says nothing about any other
+  **9 entries covering 8 tests**, so a clean run says nothing about any other
   test you may have changed. That figure is pinned by
   `tests/test_mutations.py`, so growing the table forces this line to be
   updated with it and the number here cannot go stale.

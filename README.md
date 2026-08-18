@@ -53,6 +53,21 @@ data change rather than a code change, and the same flag shows what a supplied
 file loaded as. See
 [How it works](docs/how-it-works.md#ontology-fact-source).
 
+`--graph DIR` writes the run itself out as a Graphviz DOT file named
+`agent-workflows-<UTC timestamp>.dot` -- the active TBox plus the properties
+this request derived and the skills it selected or blocked. The directory is
+used as given and only the filename varies; omit the value to write into the
+system temporary directory:
+
+```bash
+agent-workflows-harness --touches session_module --scope one_line --graph
+# graph written: /tmp/agent-workflows-20260818T111907250000Z.dot
+dot -Tsvg /tmp/agent-workflows-20260818T111907250000Z.dot -o run.svg
+```
+
+The path is reported on stderr, so stdout stays the JSON document a caller
+parses. See [How it works](docs/how-it-works.md#run-graph).
+
 Plugin hosts resolve the harness from `PATH`, the current workspace's `.venv`,
 or an importable active Python environment, in that order. They try every
 available form before treating the runtime as unavailable and do not install
