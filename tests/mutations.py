@@ -769,10 +769,11 @@ entry(
     ),
     # Pins the rendered comparison, not the bare hint text. The hint alone is a
     # literal at tests/test_ontology.py:445, so it is in that test's longrepr
-    # whether or not this mutation is what broke it -- the one entry of five
-    # whose pin was source-echoable. pytest renders the needle in *single*
-    # quotes where the source uses double, so this form cannot appear in a
-    # source echo. Observed through --emit-expect, not composed.
+    # whether or not this mutation is what broke it, and this pin carries no
+    # `AssertionError: ` prefix to separate a real catch from that echo. pytest
+    # renders the needle in *single* quotes where the source uses double, so
+    # this form cannot appear in a source echo. Observed through --emit-expect,
+    # not composed.
     expect="assert 'run --print-ontology to list the declared vocabulary' in",
     note=(
         "A rejected --touches or --scope exits 2 with an empty stdout, so the "
