@@ -435,7 +435,9 @@ review, final Architect and Critic validation, atomic commit, and reporting.
 
 ## Close Open Issues Goal
 
-Explicitly invoke `$dev-workflows:close-open-issues-goal` or `/dev-workflows:close-open-issues-goal` (the host-specific form) only when you want to create, set, or start the persistent goal for reducing the current repository's open issue count to zero. Invocation creates the goal only: that same turn must not inspect or prioritize issues, implement work, close issues, or create issues unless those actions are separately requested.
+Explicitly invoke `$dev-workflows:close-open-issues-goal` or `/dev-workflows:close-open-issues-goal` (the host-specific form) only when you want to create, set, or start the persistent goal for reducing the current repository's open issue count to zero. The invocation is itself the request, so the goal is set in that turn through the host's own goal mechanism -- in Claude Code, `ProposeGoal` with `ask_user` false, which sets the session goal directly without a confirmation dialog. Setting the goal is all that turn does: it must not inspect or prioritize issues, implement work, close issues, or create issues unless those actions are separately requested.
+
+The condition names one end state the goal evaluator can check from the conversation alone -- a fresh open-issue listing showing none -- because that evaluator reads the transcript and cannot run commands or read files. Claude Code caps a condition at 500 characters, so a long repository identifier is absorbed by shortening the wording, never by dropping the end state or the per-issue workflow. When the host refuses to set a goal at all (an agent context, a non-interactive session, plan mode still active, restricted hooks), the invocation reports why and hands back the exact `/goal <condition>` line to run.
 
 When the goal is later executed, begin with the highest-priority open issue and resolve it using `$dev-workflows:implementation-skill` or `/dev-workflows:implementation-skill`. Work discovered while resolving an issue becomes a follow-up issue only after Architect and Critic have assessed it.
 
@@ -446,4 +448,4 @@ Each follow-up issue records:
 - acceptance criteria;
 - priority rationale and dependencies, when known.
 
-The goal has no default token budget; one is supplied only when explicitly requested. If another goal is already active, report that constraint and ask the user how to proceed. Do not replace, complete, or block the existing goal merely to create this one.
+The goal has no default token budget; one is supplied only when explicitly requested. A newly set goal replaces the active one, so when a goal is already active the proposal asks first and the replacement happens on the user's keypress. Do not clear, complete, or block the existing goal to make room for this one.
