@@ -305,9 +305,27 @@ def _escape(text: str) -> str:
     Every id and label is quoted rather than emitted bare: `run-broad-tests`
     is not a bare DOT identifier, and a term is free to collide with a DOT
     keyword. Backslash first, or the quote's own escape would be re-escaped.
+
+    The set is what DOT can express inside a quoted string and this module can
+    invert: backslash and the double quote, because they end the escape or the
+    string, and LF and CR, because DOT's line escapes are the centered, the
+    left-justified and the right-justified break, and only two of those three
+    are the image of a character an input can carry. Both render as a line
+    break rather than as the control character -- an escaped CR prints its tail
+    on a line of its own, and a CRLF prints two breaks. That is accepted: what
+    the mapping buys is a file whose line count the writer and a line reader
+    agree on, and graphviz parses a raw CR either way.
+
+    Every other control character a POSIX `--ontology` path may legally carry
+    is left alone -- VT, FF and the separators below 0x20, and NEL, LS and PS
+    above them, which are C1 and Unicode rather than C0 but skew a text-mode
+    line reader the same way. DOT has no escape for any of them, so anything
+    written here would not survive the inverse the `source` tests pin.
     """
 
-    return text.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+    return (
+        text.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n").replace("\r", "\\r")
+    )
 
 
 def _node(kind: str, term: str) -> str:
