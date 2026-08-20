@@ -277,11 +277,19 @@ def write_graph(
     fails on an existing symlink rather than following it. With microsecond
     timestamps a collision is an anomaly worth reporting rather than the normal
     outcome of running twice.
+
+    LF on every platform, named rather than inherited. `build_dot` joins with
+    LF and this module sorts every relation so that two runs render the same
+    bytes; a text-mode write that does not name a newline turns each one into
+    CRLF on Windows, which ends that promise at the file boundary and leaves
+    the same graph on two platforms as two different byte sequences. graphviz
+    reads either, so this is for the caller diffing two graphs rather than for
+    the parser.
     """
 
     moment = moment if moment is not None else datetime.now(UTC)
     target = Path(directory) / graph_filename(moment)
-    with target.open("x", encoding="utf-8") as handle:
+    with target.open("x", encoding="utf-8", newline="\n") as handle:
         handle.write(build_dot(ontology, plan, derivations, moment=moment, source=source))
     return target
 

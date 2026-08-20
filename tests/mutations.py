@@ -126,7 +126,7 @@ uses could not be falsified against anything.
 What this seed does not cover
 -----------------------------
 
-Nine entries across four files. The three the issue names by test are all
+Ten entries across four files. The three the issue names by test are all
 here; what is not covered is everything else. Two things follow, and the
 summary line states both so a green cannot be read as more than it is:
 
@@ -911,6 +911,31 @@ entry(
         "here left the whole suite green twice while a real --scope run drew a "
         "node nothing declares. This entry is what makes the one test that "
         "reads the producer's own output the one that has to stay."
+    ),
+)
+
+entry(
+    name="graph-line-ending",
+    target=DOTGRAPH,
+    module=DOTGRAPH_MODULE,
+    old='    with target.open("x", encoding="utf-8", newline="\\n") as handle:',
+    new='    with target.open("x", encoding="utf-8", newline="\\r\\n") as handle:',
+    test=(
+        "tests/test_dotgraph.py::"
+        "test_the_written_graph_carries_the_bytes_the_renderer_produced"
+    ),
+    # Pasted from `--emit-expect`, not composed: line 1 of the message the flip
+    # produces. Double-quoted for the apostrophe the captured line carries.
+    expect="AssertionError: the platform's newline translation reached the file",
+    note=(
+        "Flipped rather than deleted. Deleting the keyword is a no-op on POSIX, "
+        "so that mutation would go SURVIVED on the cell that grades this table "
+        "while pinning nothing -- the same blindness issue #20 reported, moved "
+        "one level up. Forcing CRLF is the experiment that issue ran and found "
+        "the suite green for, because every reader normalised it away through "
+        "read_text. The removal case is observable only on the Windows cell, "
+        "which runs the suite and not this table; this entry is what proves the "
+        "bytes test inverts the normalisation everywhere else."
     ),
 )
 
