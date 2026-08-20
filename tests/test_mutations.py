@@ -906,9 +906,24 @@ def _recommended_line(workspace: Path, capsys, node: str) -> str:
     assert code == mutations.EXIT_OK, printed
     lines = printed.splitlines()
     label = next(i for i, line in enumerate(lines) if "paste this first line" in line)
-    # The failing location travels with the line, so the author can see *where*
-    # it broke; asserted here so every shape below carries it.
-    assert "test_subject.py:" in printed, printed
+    # The failing location, so the author can see *where* it broke. `printed`
+    # is the wrong haystack for it: `emit_expect`'s own header prints
+    # `entry: {name} -> test_subject.py::{node}`, so a substring search passes
+    # with the whole "it failed here" block deleted -- measured. Isolate that
+    # block's label the way the pin is isolated above and read the line under
+    # it. What this pins is the block's presence and the file it names, not the
+    # line number: `emit_expect` copies that number verbatim from pytest's own
+    # detail line rather than computing it, so nothing in the selection logic
+    # can get it wrong while keeping the file right. Which of several detail
+    # lines gets printed is not pinned either, because every shape here
+    # produces exactly one.
+    failed_here = [i for i, line in enumerate(lines) if "it failed here" in line]
+    assert failed_here, printed
+    # Not `lines[failed_here[0] + 1]` unguarded: a label printed with nothing
+    # under it would raise IndexError, and capsys has already drained the
+    # output, so the red would arrive with nothing to read.
+    assert failed_here[0] + 1 < len(lines), printed
+    assert lines[failed_here[0] + 1].startswith("test_subject.py:"), printed
     return lines[label + 1]
 
 
