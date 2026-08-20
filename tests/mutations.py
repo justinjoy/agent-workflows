@@ -70,14 +70,18 @@ that actually happened:
    - the element choice, pinned by
      `test_a_failure_whose_source_echoes_another_expect_is_not_caught` in the
      self-check, which fails if this match ever moves to the longrepr;
-   - the `AssertionError: ` prefix every captured `expect` carries, which a
-     source echo never has. This is why `--emit-expect` prints the message
-     attribute for pasting rather than telling an author to find a distinctive
-     line in the output themselves.
+   - a leading `SomeError: ` prefix, which a source echo never has. It is not
+     universal and must not be leaned on as if it were: pytest's `message`
+     attribute carries one only when the failure is a raised exception or an
+     assertion with an explanatory message. A bare `assert x in y` produces a
+     message whose first line *is* the assert line, so a pin taken from one
+     rests on the element choice alone. This is why `--emit-expect` prints the
+     message attribute for pasting rather than telling an author to find a
+     distinctive line in the output themselves.
 
-   An author who pastes a fragment without that prefix still has the first
-   guard. An author who keeps the prefix still has the second. Do not remove
-   either on the grounds that the other covers it.
+   An author whose failure offers no prefix, or who drops an available one for
+   a recorded reason, still has the first guard. An author who keeps one has
+   both. Do not remove either on the grounds that the other covers it.
 5. The baseline is verified, not assumed: the full suite must be green at
    startup, and each entry's named test must pass on the clean tree before it
    is mutated.
@@ -476,10 +480,13 @@ def undiscriminating_expect(expect: str) -> str | None:
     """Why this `expect` could not tell one failure from another, or None.
 
     `probe` already refused an empty `expect`, because `"" in message` is
-    always true. `"AssertionError:" in message` is always true for the
-    identical structural reason, and it is far likelier to be written: the
-    message every Python assertion produces starts with it, and `--emit-expect`
-    prints that prefix. Measured on this file's own canaries -- with
+    always true. `"AssertionError:" in message` is true of every failure that
+    carries that class as its prefix, whatever the behaviour did, and it is far
+    likelier to be written than the empty one: an assertion carrying an
+    explanatory message produces a first line that starts with it, and
+    `--emit-expect` prints that prefix. The same hole opens one class along --
+    `"ValueError: "` is no better -- which is why the rule below strips any
+    `SomeError: ` rather than that one. Measured on this file's own canaries -- with
     `expect="AssertionError:"` both of the two that carry the most weight go
     CAUGHT on the wrong branch and the whole of oracle 4 evaporates, with no
     code edited anywhere. The guard that existed was the right guard stopping
@@ -768,8 +775,8 @@ entry(
         "test_a_rejected_fact_points_at_the_flag_that_lists_the_vocabulary"
     ),
     # Pins the rendered comparison, not the bare hint text. The hint alone is a
-    # literal at tests/test_ontology.py:445, so it is in that test's longrepr
-    # whether or not this mutation is what broke it, and this pin carries no
+    # literal in that test's source, so it is in that test's longrepr whether or
+    # not this mutation is what broke it, and this pin carries no
     # `AssertionError: ` prefix to separate a real catch from that echo. pytest
     # renders the needle in *single* quotes where the source uses double, so
     # this form cannot appear in a source echo. Observed through --emit-expect,
@@ -811,7 +818,7 @@ entry(
         "tests/test_plugin_package.py::"
         "test_every_flag_the_documents_name_is_a_flag_the_cli_accepts"
     ),
-    expect="how-it-works.md names --print-ontologyy, which the CLI does not accept",
+    expect="AssertionError: how-it-works.md names --print-ontologyy, which the CLI does not accept",
     note=(
         "The largest single cluster in issue #12's evidence: one site, three "
         "separate regex defects, each of which emptied the captured block list "
@@ -1141,16 +1148,20 @@ def run_table(
 def recommended_pin(message: str) -> str:
     """The line `--emit-expect` tells an author to paste.
 
-    The first line of the failure message, prefix included. Named and pinned
+    The first line of the failure message, whatever shape it has. Named and pinned
     because this is the authoring path: a degraded version hands the author a
     bad `expect`, the author pastes it in good faith, and every one of the six
     oracles then agrees with it perfectly. That is this issue's defect class
     upstream of every oracle rather than inside one, and it is the only layer
     where being wrong is self-sealing.
 
-    Line 2 is `assert (False)` and the like -- satisfiable by an enormous class
-    of unrelated failures, and stripped of the `AssertionError: ` prefix that
-    the module docstring names as one of two independent guards.
+    Line 1 in each shape a failure takes: a `SomeError: ` prefix
+    and the observed value when the failure is a raised exception or an
+    assertion with a message, and the assert line itself when it is a bare
+    assertion, which has no prefix to include. Taking line 1 rather than asking
+    an author for a "distinctive" line is what makes one rule out of the three.
+    A later line is satisfiable by a wider class of unrelated failures, and
+    carries no prefix even where line 1 did.
     """
 
     return message.splitlines()[0] if message else ""
@@ -1201,11 +1212,12 @@ def emit_expect(item: Entry, root: Path | None = None) -> int:
     if result.outcome != "failed":
         print("the mutation did not make the named test fail, so there is nothing to pin")
         return EXIT_UNEVALUABLE
-    # Paste the FIRST line, prefix included. "Find a distinctive line" would
-    # invite dropping the `AssertionError: ` prefix, and that prefix is one of
-    # the two independent guards described in the module docstring -- a source
-    # echo never carries it.
-    print("--- paste this first line into expect, prefix AND the value after it ---")
+    # Paste the FIRST line, whatever it is. "Find a distinctive line" would
+    # invite dropping a `SomeError: ` prefix where one exists, and where it
+    # exists it is one of the two independent guards described in the module
+    # docstring -- a source echo never carries one. Where the failure is a bare
+    # assertion there is no prefix to drop, and line 1 is still the pin.
+    print("--- paste this first line into expect, exactly as printed ---")
     print(recommended_pin(result.message))
     print("--- full failure message, for choosing a longer pin if you need one ---")
     print(result.message)

@@ -196,6 +196,21 @@ def quoted():
 
 def test_that_depends_on_a_fixture(quoted):
     assert quoted.endswith('"')
+
+
+def test_that_fails_without_an_explanatory_message():
+    # No message, so pytest's `message` attribute is the assert line itself and
+    # there is no `SomeError: ` prefix to keep. The shipped table holds pins of
+    # this shape; without one here the authoring canary could only ever see the
+    # shape that does carry a prefix.
+    assert '"' in quote("a b")
+
+
+def test_that_fails_with_something_other_than_an_assertion_error():
+    # A prefix, but not `AssertionError: `. `runtime-free-derive` is this
+    # shape, and a canary pinning the class name rather than the fact that a
+    # prefix exists would not notice.
+    assert quote("a b").index('"') == 0
 '''
 
 # The mutation every canary applies: quoting stops happening.
@@ -418,11 +433,13 @@ def test_an_empty_expect_cannot_make_a_failure_caught(workspace: Path):
 @pytest.mark.parametrize("generic", ["AssertionError:", "AssertionError", "Error", "ValueError: "])
 def test_a_generic_expect_cannot_make_a_failure_caught(workspace: Path, generic: str):
     # The same hole as the empty expect, one step further along, and the only
-    # degradation in this file's history that needs no code edit at all. Every
-    # Python assertion failure's message begins with the exception class, so an
-    # `expect` that is only that class matches whatever went wrong --
-    # `"AssertionError:" in message` is true for the same structural reason
-    # `"" in message` is.
+    # degradation in this file's history that needs no code edit at all. Where
+    # a failure message begins with its exception class -- a raised exception,
+    # or an assertion carrying a message -- an `expect` that is only that class
+    # matches whatever went wrong: `"AssertionError:" in message` is true for
+    # the same structural reason `"" in message` is. A bare assertion has no
+    # such prefix (see `test_that_fails_without_an_explanatory_message` in the
+    # fixture above), which narrows where this hole opens without closing it.
     #
     # Measured before this guard: this fixture, whose entire job is to fail for
     # the *wrong* reason, came back CAUGHT for every string below, and so did
@@ -431,8 +448,10 @@ def test_a_generic_expect_cannot_make_a_failure_caught(workspace: Path, generic:
     # of oracle 4 evaporated.
     #
     # `--emit-expect` is what makes this the likely mistake rather than an
-    # exotic one: it prints the first line and says to include its prefix, and
-    # the prefix is exactly this.
+    # exotic one: it prints the first line for pasting, and where the failure
+    # is an assertion carrying a message, this is the prefix it carries. The
+    # parametrisation above covers `ValueError: ` for the same reason: the hole
+    # is the class name, whichever class it is.
     verdict = _probe(
         workspace,
         old=DELETE_QUOTING[0],
@@ -446,6 +465,13 @@ def test_a_generic_expect_cannot_make_a_failure_caught(workspace: Path, generic:
 def test_an_expect_naming_an_observed_value_is_still_accepted():
     # The other side of the guard. Without this, "reject everything" would
     # satisfy the test above, and the table would be the thing that broke.
+    #
+    # Three of the four are prefix-free, which is the point rather than an
+    # accident: the guard is about whether a pin names an observed value, not
+    # about whether a prefix happens to exist for it to carry. The last one is
+    # `doc-fence-scan`'s pin as the table held it before its prefix was
+    # restored -- kept here as a sample, so this list stays a set of shapes the
+    # guard must accept rather than a copy of the table's current values.
     for good in (
         "AssertionError: /home/me/my tbox/t.json",
         "import of pyrewire halted",
@@ -865,35 +891,54 @@ def test_a_table_entry_reaches_the_verdict_path_at_all(workspace: Path):
     assert [verdict.name for _, verdict in results] == [mutations.CAUGHT], results[0][1].detail
 
 
+def _recommended_line(workspace: Path, capsys, node: str) -> str:
+    """The one line `--emit-expect` tells the author to paste, for one shape.
+
+    Isolated rather than searched for. Asserting only that the right text
+    appears *somewhere* in the output is satisfied by the full message printed
+    below it, so it would not notice the recommended line itself being wrong --
+    which is the whole failure mode here.
+    """
+
+    entry = _workspace_entry(workspace, test=f"test_subject.py::{node}")
+    code = mutations.emit_expect(entry, root=workspace)
+    printed = capsys.readouterr().out
+    assert code == mutations.EXIT_OK, printed
+    lines = printed.splitlines()
+    label = next(i for i, line in enumerate(lines) if "paste this first line" in line)
+    # The failing location travels with the line, so the author can see *where*
+    # it broke; asserted here so every shape below carries it.
+    assert "test_subject.py:" in printed, printed
+    return lines[label + 1]
+
+
 def test_the_authoring_path_recommends_a_pin_that_can_discriminate(workspace: Path, capsys):
     # The authoring path is the only layer where being wrong is self-sealing:
     # a bad pin is handed to the author, pasted in good faith, and then every
     # oracle downstream agrees with it. Nothing tested it at all.
-    entry = _workspace_entry(workspace)
-    code = mutations.emit_expect(entry, root=workspace)
-    printed = capsys.readouterr().out
-    assert code == mutations.EXIT_OK, printed
+    #
+    # Three shapes, because the shipped table holds three and a canary driven
+    # by one of them cannot observe the other two. Each value below is what the
+    # authoring path actually printed, not a string composed here: a composed
+    # message is an assertion about what this file believes pytest says.
+    messaged = _recommended_line(workspace, capsys, "test_a_spaced_value_is_quoted")
+    bare = _recommended_line(workspace, capsys, "test_that_fails_without_an_explanatory_message")
+    raised = _recommended_line(
+        workspace, capsys, "test_that_fails_with_something_other_than_an_assertion_error"
+    )
 
-    # Isolate the line the author is told to paste. Asserting only that the
-    # right text appears *somewhere* in the output is satisfied by the full
-    # message printed below it, so it would not notice the recommended line
-    # itself being wrong -- which is the whole failure mode here.
-    lines = printed.splitlines()
-    label = next(i for i, line in enumerate(lines) if "paste this first line" in line)
-    recommended = lines[label + 1]
-    assert recommended.startswith("AssertionError: "), recommended
-    assert "spaced value must be quoted" in recommended, recommended
-
-    pin = mutations.recommended_pin("AssertionError: spaced value must be quoted\nassert (False)")
-    assert pin == "AssertionError: spaced value must be quoted"
-    # What it recommends must survive the guard it will be checked against,
-    # and must not be line 2 -- `assert (False)` carries no prefix and is
-    # satisfiable by an enormous class of unrelated failures.
-    assert mutations.undiscriminating_expect(pin) is None
-    assert pin != "assert (False)"
-    assert "spaced value must be quoted" in printed, printed
-    # And the failing location, so the author can see *where* it broke.
-    assert "test_subject.py:" in printed, printed
+    # An assertion carrying a message: a prefix exists, and it is kept.
+    assert messaged == "AssertionError: spaced value must be quoted", messaged
+    # A bare assertion: no prefix exists to keep, and line 1 is still the pin --
+    # it is the line naming the observed value.
+    assert bare == 'assert \'"\' in \'a b\'', bare
+    # A prefix that is not AssertionError. A path that recognised only that one
+    # class would hand this author an empty pin.
+    assert raised == "ValueError: substring not found", raised
+    # Whatever the shape, what it recommends must survive the guard it will be
+    # checked against.
+    for pin in (messaged, bare, raised):
+        assert mutations.undiscriminating_expect(pin) is None, pin
 
 
 def test_the_authoring_path_refuses_an_anchor_that_is_not_unique(workspace: Path, capsys):
