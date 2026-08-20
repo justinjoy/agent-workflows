@@ -57,10 +57,14 @@ def _unescape(text: str) -> str:
 
     A generic inverse over `\\(.)` rather than a copy of _escape's ordered
     replaces: restating those would make an assertion agree with the
-    implementation by construction.
+    implementation by construction. The table holds only the escapes that are
+    not self-inverse, so it grows when the escaped set does; the generic
+    fallback covers the rest.
     """
 
-    return re.sub(r"\\(.)", lambda match: {"n": "\n"}.get(match.group(1), match.group(1)), text)
+    return re.sub(
+        r"\\(.)", lambda match: {"n": "\n", "r": "\r"}.get(match.group(1), match.group(1)), text
+    )
 
 
 def _declared_nodes(dot: str) -> set[str]:
@@ -525,6 +529,35 @@ def test_the_written_graph_carries_the_bytes_the_renderer_produced(tmp_path: Pat
     # The bundled TBox renders 149 newlines today, so the floor is not a bound
     # this graph approaches -- it is there to fail a file that stopped being one.
     assert payload.count(b"\n") > 40, "a graph this short is not the graph build_dot renders"
+
+
+def test_a_carriage_return_in_the_source_never_reaches_the_file_raw(tmp_path: Path):
+    # `source` is the one string reaching _escape that nothing validates: the
+    # CLI passes --ontology through verbatim and CR is legal in a POSIX
+    # filename. Every other term the CLI can put here is pattern-checked first
+    # -- a direct importer can still hand a SelectedSkill an unvalidated
+    # reason, which this escaping now covers too.
+    #
+    # Bytes, and lines split on the byte the writer used, so the CR is still in
+    # the haystack when the assertions run -- read_text folds it away, and
+    # str.splitlines() would cut the label in half around it.
+    target = write_graph(
+        tmp_path, DEFAULT_ONTOLOGY, _plan(), moment=MOMENT, source="/tmp/o\rdd.json"
+    )
+
+    payload = target.read_bytes()
+    (label,) = [
+        line.decode("utf-8")
+        for line in payload.split(b"\n")
+        if b"agent-workflows harness run" in line
+    ]
+
+    assert b"\r" not in payload, "a CR in --ontology reached the graph as a raw byte"
+    # The absence above is satisfied for free by an _escape that drops the
+    # character rather than escaping it, and by one that escapes it before the
+    # backslash. Round-tripping is what makes it say something: measured, this
+    # is the only assertion here that fails either mutant.
+    assert "ontology: /tmp/o\rdd.json" in _unescape(label), "the escaping is not invertible"
 
 
 def test_an_existing_graph_file_is_refused_rather_than_clobbered(tmp_path: Path):
