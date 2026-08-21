@@ -12,7 +12,7 @@
       "name": "dev-workflows",
       "source": "./plugins/dev-workflows",
       "description": "Reusable implementation and review workflow skills.",
-      "version": "2.1.0",
+      "version": "2.1.1",
       "author": {
         "name": "joykim"
       },

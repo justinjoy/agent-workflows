@@ -1,7 +1,7 @@
 {
   "name": "dev-workflows",
   "description": "Wirelog workflows with mandatory review, Architect/Critic approval, and verified atomic commits.",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "license": "APACHE-2.0",
   "author": {
     "name": "joykim"

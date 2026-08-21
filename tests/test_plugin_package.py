@@ -743,7 +743,7 @@ def test_the_contract_never_promises_a_document_for_rejected_input():
 def test_provider_versions_follow_release_policy():
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     expected_version = project["project"]["version"]
-    assert expected_version == "2.1.0"
+    assert expected_version == "2.1.1"
 
     provider_plugin_manifests = [
         ROOT / "plugins" / "dev-workflows" / f".{host}-plugin" / "plugin.json"
