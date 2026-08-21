@@ -1,6 +1,6 @@
 {
   "name": "dev-workflows",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Reusable development workflow skills for implementation, review, and release work.",
   "author": {
     "name": "joykim"
