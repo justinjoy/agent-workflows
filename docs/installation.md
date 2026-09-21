@@ -1,12 +1,14 @@
 # Installation
 
 Install the `dev-workflows` plugin from this repository for Codex, Claude Code,
-or Antigravity. The plugin provides the skills; the optional Python package
+Antigravity, or GitHub Copilot CLI. The plugin provides the skills; the
+optional Python package
 provides the Wirelog selector used by `implementation-skill`.
 
 ## Prerequisites
 
-- Git and one supported host: Codex, Claude Code, or Antigravity.
+- Git and one supported host: Codex, Claude Code, Antigravity, or GitHub
+  Copilot CLI.
 - Python 3.11 or newer when using the Wirelog harness.
 
 The skills can be installed without Python. If the harness is unavailable, the
@@ -109,6 +111,33 @@ tests, independent review, Architect and Critic approval of the immutable
 candidate, and a verified atomic commit. Installing the repository URL itself
 is not used here because this repository is a multi-host monorepo and the
 Antigravity plugin root is `plugins/dev-workflows`.
+
+### GitHub Copilot CLI
+
+Install the plugin directly from its subdirectory:
+
+```bash
+copilot plugin install justinjoy/agent-workflows:plugins/dev-workflows
+```
+
+Start a new Copilot CLI session, or reload plugins in an existing session:
+
+```text
+/skills reload
+```
+
+Invoke the workflow with:
+
+```text
+/implementation-skill
+```
+
+The plugin's `bin/agent-workflows-harness` launcher is placed on the plugin
+runtime `PATH`. It first uses the checkout's `.venv` when available and then
+falls back to `python3 -m agent_workflows_harness.cli`, so Copilot can run the
+selector without an activated shell environment. If the package is not
+installed in either location, the skill's fail-closed behavior still applies:
+the workflow does not skip its planning, review, or final validation gates.
 
 ## Install the Wirelog Harness
 

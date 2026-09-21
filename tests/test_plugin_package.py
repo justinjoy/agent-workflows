@@ -85,6 +85,17 @@ def test_implementation_skill_resolves_installed_harness_forms():
     assert "bare command is absent from `PATH`" in skill
 
 
+def test_copilot_plugin_launcher_is_executable_and_uses_plugin_relative_paths():
+    launcher = ROOT / "plugins" / "dev-workflows" / "bin" / "agent-workflows-harness"
+
+    assert launcher.is_file()
+    assert launcher.stat().st_mode & 0o111
+    contents = launcher.read_text(encoding="utf-8")
+    assert 'root=$(cd "$here/../../.." && pwd)' in contents
+    assert 'exec "$venv" "$@"' in contents
+    assert "python3 -m agent_workflows_harness.cli" in contents
+
+
 def test_implementation_skill_requires_review_consensus_before_commit():
     skill_root = ROOT / "plugins" / "dev-workflows" / "skills"
     implementation = _flat(

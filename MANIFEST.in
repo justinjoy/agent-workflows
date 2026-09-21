@@ -5,3 +5,4 @@ include .claude-plugin/marketplace.json
 include .gemini-plugin/marketplace.json
 recursive-include docs *.md *.svg
 recursive-include plugins *.md *.json *.yaml
+include plugins/dev-workflows/bin/agent-workflows-harness
