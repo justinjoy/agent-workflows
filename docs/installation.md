@@ -1,14 +1,14 @@
 # Installation
 
 Install the `dev-workflows` plugin from this repository for Codex, Claude Code,
-Antigravity, or GitHub Copilot CLI. The plugin provides the skills; the
+Antigravity, GitHub Copilot CLI, or Cursor. The plugin provides the skills; the
 optional Python package
 provides the Wirelog selector used by `implementation-skill`.
 
 ## Prerequisites
 
-- Git and one supported host: Codex, Claude Code, Antigravity, or GitHub
-  Copilot CLI.
+- Git and one supported host: Codex, Claude Code, Antigravity, GitHub
+  Copilot CLI, or Cursor.
 - Python 3.11 or newer when using the Wirelog harness.
 
 The skills can be installed without Python. If the harness is unavailable, the
@@ -138,6 +138,39 @@ falls back to `python3 -m agent_workflows_harness.cli`, so Copilot can run the
 selector without an activated shell environment. If the package is not
 installed in either location, the skill's fail-closed behavior still applies:
 the workflow does not skip its planning, review, or final validation gates.
+
+### Cursor
+
+Cursor reads the repository-root `.cursor-plugin/marketplace.json`, which
+resolves `dev-workflows` to `plugins/dev-workflows` and its
+`.cursor-plugin/plugin.json`. In Cursor, open **Customize**, choose
+**From GitHub Repository**, and enter:
+
+```text
+https://github.com/justinjoy/agent-workflows
+```
+
+Install `dev-workflows` at project or user scope. To try a local checkout
+instead, copy the plugin root into Cursor's local plugin directory and
+reload the window (**Developer: Reload Window**):
+
+```bash
+mkdir -p ~/.cursor/plugins/local
+cp -R ./plugins/dev-workflows ~/.cursor/plugins/local/dev-workflows
+```
+
+Invoke the workflow with:
+
+```text
+/implementation-skill
+```
+
+The Cursor manifest points at the shared `skills/` directory, so Cursor runs
+the same `implementation-skill` and atomic skills as the other hosts. Cursor
+does not put the plugin's `bin/` directory on `PATH`; the harness is resolved
+through the workspace `.venv` or the active Python as described in
+[Harness Command Resolution](#harness-command-resolution), and the fail-closed
+behavior applies when neither form is installed.
 
 ## Install the Wirelog Harness
 

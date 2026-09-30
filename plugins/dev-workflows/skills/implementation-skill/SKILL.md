@@ -1,6 +1,6 @@
 ---
 name: implementation-skill
-description: Wirelog-based implementation harness for code changes, evaluated through PyreWire. Invoke as $dev-workflows:implementation-skill in Codex, /dev-workflows:implementation-skill in Claude Code or Antigravity, or /implementation-skill in GitHub Copilot CLI.
+description: Wirelog-based implementation harness for code changes, evaluated through PyreWire. Invoke as $dev-workflows:implementation-skill in Codex, /dev-workflows:implementation-skill in Claude Code or Antigravity, or /implementation-skill in GitHub Copilot CLI or Cursor.
 ---
 
 # Implementation Skill

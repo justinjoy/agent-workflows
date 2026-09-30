@@ -1,6 +1,7 @@
 # Agent Workflows
 
-Shared agent skills for Codex, Claude Code, Antigravity, and GitHub Copilot CLI.
+Shared agent skills for Codex, Claude Code, Antigravity, GitHub Copilot CLI,
+and Cursor.
 
 `implementation-skill` is now a Wirelog-based harness evaluated through
 PyreWire. It keeps the stable host entrypoint, but splits implementation work
@@ -85,6 +86,10 @@ Then use `/implementation-skill`, or ask Copilot to use the
 `implementation-skill` skill. The plugin's `bin/` launcher makes the harness
 available to Copilot without requiring the repository's `.venv` to be on
 `PATH`.
+
+Cursor imports the plugin from this repository's `.cursor-plugin/marketplace.json`
+(Customize, then From GitHub Repository). Then use `/implementation-skill`. See
+[Installation](docs/installation.md#cursor).
 
 Supported PyreWire wheels include the Wirelog runtime. `WIRELOG_LIB` is only
 needed to override the bundled library or when using a custom/source-built
