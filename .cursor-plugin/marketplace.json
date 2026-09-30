@@ -1,0 +1,19 @@
+{
+  "name": "agent-workflows",
+  "owner": {
+    "name": "joykim"
+  },
+  "metadata": {
+    "description": "Reusable agent workflow plugins for Cursor.",
+    "pluginRoot": "plugins"
+  },
+  "plugins": [
+    {
+      "name": "dev-workflows",
+      "source": "dev-workflows",
+      "description": "Wirelog workflows with mandatory review, Architect/Critic approval, and verified atomic commits.",
+      "category": "Productivity",
+      "tags": ["development", "implementation", "review", "wirelog", "atomic-commit"]
+    }
+  ]
+}

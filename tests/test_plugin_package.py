@@ -758,7 +758,7 @@ def test_provider_versions_follow_release_policy():
 
     provider_plugin_manifests = [
         ROOT / "plugins" / "dev-workflows" / f".{host}-plugin" / "plugin.json"
-        for host in ("antigravity", "claude", "codex", "gemini")
+        for host in ("antigravity", "claude", "codex", "cursor", "gemini")
     ]
     coupled_marketplace_manifests = [
         ROOT / f".{host}-plugin" / "marketplace.json"
@@ -776,6 +776,10 @@ def test_provider_versions_follow_release_policy():
 
     claude_entry = _json(ROOT / ".claude-plugin" / "marketplace.json")["plugins"][0]
     assert "version" not in claude_entry
+
+    cursor_marketplace = _json(ROOT / ".cursor-plugin" / "marketplace.json")
+    assert "version" not in cursor_marketplace["plugins"][0]
+    assert "version" not in cursor_marketplace.get("metadata", {})
 
 
 def test_claude_marketplace_points_to_shared_lifecycle_skill_layout():
@@ -807,6 +811,31 @@ def test_claude_marketplace_points_to_shared_lifecycle_skill_layout():
     assert "commit-atomic-change" in implementation
     assert "Reviewer, Architect, and Critic approve" in implementation
     assert "approved_candidate_tree" in commit
+
+
+def test_cursor_marketplace_resolves_to_shared_lifecycle_skill_layout():
+    marketplace = _json(ROOT / ".cursor-plugin" / "marketplace.json")
+    entry = marketplace["plugins"][0]
+    plugin_root = (ROOT / marketplace["metadata"]["pluginRoot"] / entry["source"]).resolve()
+
+    assert marketplace["name"] == "agent-workflows"
+    assert marketplace["owner"]["name"]
+    assert plugin_root == (ROOT / "plugins" / "dev-workflows").resolve()
+
+    manifest = _json(plugin_root / ".cursor-plugin" / "plugin.json")
+    assert manifest["name"] == entry["name"] == "dev-workflows"
+    for description in (manifest["description"], entry["description"]):
+        assert "mandatory review" in description
+        assert "Architect/Critic approval" in description
+        assert "verified atomic commits" in description
+
+    # A manifest `skills` path replaces Cursor's default folder discovery, so it
+    # must point at the shared tree rather than a Cursor-only copy.
+    skill_root = (plugin_root / manifest["skills"]).resolve()
+    assert skill_root == (plugin_root / "skills").resolve()
+    assert EXPECTED_ATOMIC_SKILLS | {"implementation-skill"} <= {
+        path.parent.name for path in skill_root.glob("*/SKILL.md")
+    }
 
 
 def test_antigravity_plugin_root_exposes_shared_lifecycle_skills():
@@ -860,6 +889,7 @@ def test_source_distribution_manifest_includes_plugin_assets():
     assert "include .agents/plugins/marketplace.json" in manifest
     assert "include .antigravity-plugin/marketplace.json" in manifest
     assert "include .claude-plugin/marketplace.json" in manifest
+    assert "include .cursor-plugin/marketplace.json" in manifest
     assert "include .gemini-plugin/marketplace.json" in manifest
 
 
@@ -888,8 +918,10 @@ def test_built_artifacts_match_runtime_and_plugin_distribution_contract(tmp_path
         ".agents/plugins/marketplace.json",
         ".antigravity-plugin/marketplace.json",
         ".claude-plugin/marketplace.json",
+        ".cursor-plugin/marketplace.json",
         ".gemini-plugin/marketplace.json",
         "plugins/dev-workflows/plugin.json",
+        "plugins/dev-workflows/.cursor-plugin/plugin.json",
         "plugins/dev-workflows/skills/report-result/SKILL.md",
         "plugins/dev-workflows/skills/commit-atomic-change/SKILL.md",
     }
