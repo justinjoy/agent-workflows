@@ -51,7 +51,7 @@ Claude Code discovers the shared skills directly from the plugin root
 `skills/` directory, including `implementation-skill` and
 `commit-atomic-change`. No Claude-specific copy of those skills is required.
 
-The Claude plugin manifest uses the project release version `2.1.1`; the
+The Claude plugin manifest uses the project release version `2.1.2`; the
 marketplace intentionally omits a duplicate version so the manifest remains
 the single version source.
 Existing installations can fetch and activate this lifecycle update with:
