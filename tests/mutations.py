@@ -114,7 +114,7 @@ Adding an entry
 
 A non-Python target is allowed: leave `module` unset and oracle 1 is skipped
 for that entry, since "it still imports" means nothing about Markdown. The
-other five apply unchanged. `doc-fence-scan` is that case, and
+other five apply unchanged. `doc-fence-scan` was the first such case, and
 `test_a_target_that_is_not_python_skips_only_the_import_oracle` in the
 self-check keeps the path exercised even if that entry ever leaves.
 
@@ -130,7 +130,7 @@ uses could not be falsified against anything.
 What this seed does not cover
 -----------------------------
 
-Ten entries across four files. The three the issue names by test are all
+Twelve entries across six files. The three the issue names by test are all
 here; what is not covered is everything else. Two things follow, and the
 summary line states both so a green cannot be read as more than it is:
 
@@ -824,8 +824,8 @@ entry(
         "separate regex defects, each of which emptied the captured block list "
         "so every per-item assertion in the loop was vacuously satisfied. One "
         "of them extracted zero flags from the file it existed to read. This "
-        "is also the table's only non-Python target, so it is what keeps the "
-        "module=None path exercised by data rather than by a canary alone."
+        "was also the table's first non-Python target, so the module=None "
+        "path has been exercised by data rather than by a canary alone."
     ),
 )
 
@@ -943,6 +943,44 @@ entry(
         "read_text. The removal case is observable only on the Windows cell, "
         "which runs the suite and not this table; this entry is what proves the "
         "bytes test inverts the normalisation everywhere else."
+    ),
+)
+
+
+entry(
+    name="final-validation-barrier",
+    target="plugins/dev-workflows/skills/implementation-skill/SKILL.md",
+    old="run strictly after it. Do not dispatch either final gate until the coordinator",
+    new="run strictly after it. Dispatch either final gate whenever the coordinator",
+    test=(
+        "tests/test_plugin_package.py::"
+        "test_final_validation_waits_for_and_adjudicates_the_review"
+    ),
+    expect="AssertionError: the final gates are no longer ordered after the review",
+    note=(
+        "The barrier that keeps final validation from running alongside the "
+        "Reviewer. Every gate names the same candidate, so without this sentence "
+        "a concurrent dispatch looks legitimate -- which is how Reviewer, "
+        "Architect and Critic came to run at once with nothing for the final "
+        "gates to judge."
+    ),
+)
+
+entry(
+    name="final-gate-review-guard",
+    target="plugins/dev-workflows/skills/validate-final-risks/SKILL.md",
+    old="return `blocked` for that reason alone and judge nothing else.",
+    new="note it and judge the candidate anyway.",
+    test=(
+        "tests/test_plugin_package.py::"
+        "test_final_validation_waits_for_and_adjudicates_the_review"
+    ),
+    expect="AssertionError: validate-final-risks no longer refuses to judge without the review",
+    note=(
+        "The role-side half of the barrier: a final gate dispatched without the "
+        "review it judges refuses rather than approving on the candidate alone. "
+        "Checked in the risk gate because it is the one whose subject was "
+        "already the review findings, so a weakened guard there reads naturally."
     ),
 )
 

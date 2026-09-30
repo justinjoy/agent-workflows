@@ -21,7 +21,12 @@ Report:
   selected
 - `review_findings`
 - `architect_validation` and `critic_validation`, each with its explicit
-  `verdict` and the `approved_candidate_tree` ID it judged
+  `verdict`, the `approved_candidate_tree` ID it judged, and its ruling on each
+  blocking review finding
+- every final gate dispatched before the review it judges arrived, and its
+  re-dispatch
+- whether overruling a blocking finding was unavailable because the Reviewer
+  also held a final gate
 - validation commands and results
 - every atomic commit hash, subject, committed path set, and approved tree or
   diff digest

@@ -11,7 +11,8 @@ Required evidence:
 
 - focused tests passed
 - broad tests passed when selected
-- independent review has no blocking findings
+- no blocking review finding stands: each was fixed through a new candidate and
+  re-review, or overruled by both Architect and Critic in their validations
 - Architect design validation passed
 - Critic risk validation passed
 - every gate artifact identifies the same `approved_candidate_tree` ID created

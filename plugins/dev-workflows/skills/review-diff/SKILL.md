@@ -14,6 +14,11 @@ files and lines when possible and focus on bugs, regressions, missing tests,
 and maintainability risks. The output must echo the `approved_candidate_tree`
 ID, approved candidate path set, and content digest reviewed.
 
+Mark every finding `blocking` or `non-blocking`. A finding is blocking when the
+candidate must not be committed while it stands. The review carries no verdict
+of its own: Architect and Critic rule on the blocking findings at final
+validation, which starts only after this review is delivered.
+
 For documentation, also verify technical accuracy, commands, internal links,
 and consistency with the actual selector output. Any candidate change
 invalidates the review and requires a new independent review.

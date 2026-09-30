@@ -332,9 +332,21 @@ The personas communicate through raw artifacts rather than shared assumptions:
 - Architect returns a plan.
 - Critic returns objections.
 - Implementer returns an uncommitted atomic candidate and validation output.
-- Reviewer returns findings against the raw diff.
-- Architect and Critic approve the same immutable candidate against the goal.
+- Reviewer returns findings against the raw diff, each marked `blocking` or
+  `non-blocking`.
+- Architect and Critic, dispatched only after the Reviewer's findings arrive,
+  rule on every blocking finding and approve the same immutable candidate
+  against the goal.
 - Committer verifies and commits only the approved tree.
+
+Final validation is not a third parallel review. Its subject is the Reviewer's
+review, so running it alongside the Reviewer leaves it nothing to judge. A
+blocking finding clears only when both Architect and Critic overrule it with an
+argument from the diff, or when a fix passes re-review and final validation. A
+gate held by the agent that wrote the findings never overrules them, so in
+single-judge mode only a fix clears one. A final gate that received no findings
+for its candidate returns `blocked`, and the coordinator re-dispatches it once
+with the findings and reports the ordering violation.
 
 ## Roles
 
@@ -408,10 +420,11 @@ that ran degraded, and which independence guarantees were weakened.
 Implementation is split into commit-sized candidates. Each candidate has one
 behavioral purpose, touches only the files needed for that purpose, and remains
 uncommitted while tests, independent review, and final Architect and Critic
-validation run. Blocking findings loop back through implementation, testing,
-and review.
+validation run, in that order. Blocking findings loop back through
+implementation, testing, review, and final validation.
 
-After all three roles approve the same candidate digest, the commit skill stages
+After no blocking review finding stands and Architect and Critic approve the
+same candidate digest, the commit skill stages
 only its approved paths and hunks, verifies the staged tree, creates a new commit
 without bypassing hooks or amending history, and verifies the commit tree still
 matches the approved tree. Multiple candidates repeat this lifecycle and produce

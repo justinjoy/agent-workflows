@@ -70,7 +70,7 @@
 
   <rect class="gate" x="475" y="760" width="250" height="76"/>
   <text class="label" x="600" y="790" text-anchor="middle">Final Gate</text>
-  <text class="body" x="600" y="814" text-anchor="middle">Architect + Critic approve</text>
+  <text class="body" x="600" y="814" text-anchor="middle">Architect + Critic judge review</text>
 
   <rect class="gate" x="475" y="870" width="250" height="76"/>
   <text class="label" x="600" y="900" text-anchor="middle">Atomic Commit</text>

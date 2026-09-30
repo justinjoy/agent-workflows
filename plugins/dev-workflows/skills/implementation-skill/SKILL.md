@@ -184,16 +184,38 @@ it the raw uncommitted diff, candidate path set and digest, and the objective,
 not the Implementer's account. Every gate must identify the same
 `approved_candidate_tree` created from the base tree with a temporary index.
 Dispatch it under Agent Use and Degraded Mode: the pass is not complete until
-the coordinator holds `review_findings`.
+the coordinator holds `review_findings`. Final validation starts only after
+this pass is complete for the current candidate, because the Reviewer's
+findings are what final validation judges.
 
 ### 8. Architect and Critic Validation
 
 Every code change selects `validate-final-design` and `validate-final-risks`.
-Architect and Critic validate the same immutable candidate reviewed by the
-Reviewer. When planning or plan critique was not selected, validate against the
-objective, risk classification, tests, review findings, and exact candidate
-instead. The candidate can proceed only when Reviewer, Architect, and Critic
-agree there are no blocking issues.
+Their subject is the Reviewer's review of the Implementer's candidate, so they
+run strictly after it. Do not dispatch either final gate until the coordinator
+has received `review_findings` echoing the same `approved_candidate_tree` the
+gate will judge. Dispatching a final gate alongside `review-diff`, or before
+its findings arrive, is an ordering violation, not a speed-up. The two final
+gates may run alongside each other. Give each the raw `review_findings`
+together with the exact candidate. When planning or plan critique was not
+selected, validate against the objective, risk classification, tests, and
+exact candidate instead.
+
+Architect and Critic adjudicate every finding the Reviewer marked `blocking`:
+each gate records it as upheld or overruled, with a reason. An overrule must
+argue from the candidate diff that the finding is wrong or not blocking;
+declining to judge a finding as outside a role's focus records it as upheld.
+A blocking finding clears only when both gates overrule it; otherwise the
+candidate goes back through implementation and re-review. Either gate may
+escalate a `non-blocking` finding, which then counts as upheld and clears only
+through a fix. The agent that wrote `review_findings` must not overrule them:
+a final gate held by that agent records every blocking finding as upheld, so
+such a finding clears only through a fix. In `single-judge mode` that is every
+blocking finding, because the one agent wrote them all. Only the coordinator
+knows who wrote the findings: say so in that gate's dispatch, and count any
+overrule it returns as upheld. The candidate can
+proceed only when Architect and Critic both approve after adjudicating the
+Reviewer's findings.
 
 Each gate returns an explicit `verdict` of `approved` or `blocked`. A `blocked`
 verdict stops the commit gate for that candidate; it never ends the run
@@ -202,6 +224,14 @@ both under Agent Use and Degraded Mode: neither pass is complete until the
 coordinator holds `architect_validation` and `critic_validation` echoing the
 `approved_candidate_tree` they judged.
 
+A final gate that received no `review_findings`, or findings echoing a
+different `approved_candidate_tree`, returns `blocked` for that reason alone.
+This block alone is a coordinator ordering defect, not a judgment of the
+candidate: re-dispatch that gate once with the received `review_findings`, and
+name the violation in the report. That re-dispatch does not spend the
+failed-dispatch retry. A second such block from the same gate for the same
+candidate stops the run as blocked.
+
 Any fix invalidates prior test, review, and final validation artifacts. Repeat
 the selected validation, independent review, and final validation gates for the
 changed candidate.
@@ -209,7 +239,9 @@ changed candidate.
 ### 9. Commit
 
 Run `commit-atomic-change` only after all selected validation passes and
-Reviewer, Architect, and Critic approve the same candidate. Require a clean real
+Reviewer, Architect, and Critic approve the same candidate. The Reviewer's
+approval means no blocking finding stands: each was fixed and re-reviewed, or
+overruled by both Architect and Critic. Require a clean real
 index before staging; do not unstage or repair pre-existing entries. Stage only
 the approved paths and hunks, verify the staged tree matches
 `approved_candidate_tree`, create a new commit without bypassing hooks or
@@ -243,7 +275,14 @@ admit no assignment that separates them. That exception is never taken by
 choice, and the report must name the assignment that could not be constructed.
 Fix the assignment before the first dispatch: choosing it pass by pass spends
 the freedom that would have separated them and then reports the collapse as
-unavoidable.
+unavoidable. Fixing the assignment is not dispatching: judgment passes are
+dispatched in workflow order, and `validate-final-design` and
+`validate-final-risks` never start before the coordinator has received
+`review_findings` for the candidate they judge. The agent that wrote
+`review_findings` never overrules them at final validation, by dispatch or by
+degradation. So the agent holding `review-diff` holds neither final gate,
+except where the reachable agents admit no such assignment; the report then
+names that overruling a blocking finding was unavailable.
 
 With exactly one independent agent the exception is forced -- that agent holds
 every judgment gate, so it judges both design and risk at final validation.
@@ -295,10 +334,11 @@ host can provide, before the first dispatch, and name the return path in every
 dispatch prompt together with the artifact the role must return.
 
 A run needs one independent agent to hold the judgment gates the selected plan
-requires, and enough to separate that plan's final validations to keep every
-guarantee -- one and two respectively for every plan the selector accepts
-today, and for the fail-closed non-trivial plan when the runtime could not run.
-With none, stop the run as blocked before editing and report it through
+requires, and enough to separate that plan's final validations -- one and two
+respectively for every plan the selector accepts today, and for the fail-closed
+non-trivial plan when the runtime could not run. Keeping every guarantee takes
+a third, which keeps `review-diff` apart from both final gates; without it,
+overruling a blocking finding is unavailable and the report says so. With none, stop the run as blocked before editing and report it through
 `report-result`, naming the count the host offered. With one, run in
 `single-judge mode`. Establishing the count before the first dispatch is the
 point: the same stop found one lost role at a time arrives after the work it
@@ -358,6 +398,9 @@ Before final response, verify:
 - Tests or validation were run and reported.
 - Reviewer checked the raw candidate diff.
 - Architect and Critic agreed the same candidate satisfies the goal.
+- Final validation was dispatched only after `review_findings` for the same
+  candidate were received, and Architect and Critic each ruled on every
+  blocking review finding.
 - Each approved candidate was committed atomically and its commit tree matches
   the approved tree.
 - Unrelated untracked or modified files were not included.
@@ -368,8 +411,13 @@ In the final response, report:
   selector `error.kind` and exit code when the run produced no plan
 - `implementation_plan` summary and `critique_findings` when those skills were selected
 - `review_findings`
-- `architect_validation` and `critic_validation`, each with its explicit `verdict`
-  and the `approved_candidate_tree` ID it judged
+- `architect_validation` and `critic_validation`, each with its explicit `verdict`,
+  the `approved_candidate_tree` ID it judged, and its ruling on each blocking
+  review finding
+- every final gate dispatched before the review it judges arrived, and its
+  re-dispatch
+- whether overruling a blocking finding was unavailable because the Reviewer
+  also held a final gate
 - every atomic commit hash, subject, committed paths, and approved digest
 - PR URL if opened
 - validation commands and results

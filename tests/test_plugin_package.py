@@ -695,6 +695,101 @@ def test_the_contract_establishes_agent_capacity_before_the_first_dispatch():
     assert "can no longer reach a commit through this harness" in doc
 
 
+def test_final_validation_waits_for_and_adjudicates_the_review():
+    # Final validation judges the Reviewer's review, so dispatching it alongside
+    # the Reviewer leaves it nothing to judge -- and a coordinator did exactly
+    # that while every gate named the same candidate, because nothing ordered
+    # them. Staleness tripwire, as above: it proves the contract states the
+    # barrier and the rulings, never that a coordinator obeys them.
+    skill_root = ROOT / "plugins" / "dev-workflows" / "skills"
+    raw = (skill_root / "implementation-skill" / "SKILL.md").read_text(encoding="utf-8")
+    reviewer = _section(raw, "### 7. Reviewer Pass")
+    final = _section(raw, "### 8. Architect and Critic Validation")
+    agent_use = _section(raw, "## Agent Use and Degraded Mode")
+    assert reviewer and final and agent_use, "a workflow section was renamed or removed"
+
+    assert "Final validation starts only after this pass is complete" in reviewer
+    # The barrier, scoped to the pass it governs.
+    assert (
+        "Do not dispatch either final gate until the coordinator has received "
+        "`review_findings` echoing the same `approved_candidate_tree`" in final
+    ), "the final gates are no longer ordered after the review"
+    assert "Dispatching a final gate alongside `review-diff`" in final
+    assert "is an ordering violation, not a speed-up" in final
+    assert "Give each the raw `review_findings` together with the exact candidate." in final
+    # Agent Use is the section every pass defers to, so it must not read as
+    # licensing an up-front dispatch of every role.
+    assert "Fixing the assignment is not dispatching" in agent_use
+    assert "never start before the coordinator has received `review_findings`" in agent_use
+
+    # What the final gates judge, and the limits on overruling the Reviewer.
+    assert "Architect and Critic adjudicate every finding the Reviewer marked `blocking`" in final
+    assert "outside a role's focus records it as upheld" in final
+    assert "A blocking finding clears only when both gates overrule it" in final
+    assert "which then counts as upheld and clears only through a fix" in final
+    # The author of the findings never overrules them, whatever the agent
+    # count -- not only in single-judge mode, where it is merely forced.
+    assert "The agent that wrote `review_findings` must not overrule them" in final
+    assert "records every blocking finding as upheld" in final
+    # A gate in a fresh context cannot know it wrote the findings; only the
+    # coordinator can, so the obligation to act on that is the coordinator's.
+    assert "say so in that gate's dispatch, and count any overrule it returns as upheld" in final
+    assert "the agent holding `review-diff` holds neither final gate" in agent_use
+    assert "overruling a blocking finding was unavailable" in agent_use
+    # The capacity count must admit what that separation costs, or a
+    # coordinator budgets two agents believing every guarantee holds.
+    assert "Keeping every guarantee takes a third, which keeps `review-diff` apart" in agent_use
+    assert (
+        "The agent that wrote `review_findings` never overrules them at final "
+        "validation, by dispatch or by degradation." in agent_use
+    )
+    # The review is an input on every path, not only when no plan was selected.
+    no_plan = re.search(r"When planning or plan critique was not selected, ([^.]*)\.", final)
+    assert no_plan, "the no-plan input list was reworded"
+    assert "review" not in no_plan.group(1)
+    # A premature dispatch has a stated recovery, bounded like any re-dispatch.
+    assert "returns `blocked` for that reason alone" in final
+    assert "re-dispatch that gate once" in final
+    assert "That re-dispatch does not spend the failed-dispatch retry." in final
+    assert "A second such block from the same gate for the same candidate stops" in final
+
+    review = _flat((skill_root / "review-diff" / "SKILL.md").read_text(encoding="utf-8"))
+    assert "Mark every finding `blocking` or `non-blocking`." in review
+    assert "The review carries no verdict of its own" in review
+
+    rulings = "each finding the Reviewer marked `blocking`, upheld or overruled, with its reason"
+    for skill_id, artifact in (
+        ("validate-final-design", "architect_validation"),
+        ("validate-final-risks", "critic_validation"),
+    ):
+        contract = _flat((skill_root / skill_id / "SKILL.md").read_text(encoding="utf-8"))
+        assert "Always adjudicate `review_findings`." in contract, skill_id
+        assert "return `blocked` for that reason alone" in contract, (
+            f"{skill_id} no longer refuses to judge without the review"
+        )
+        assert "for that reason alone and judge nothing else" in contract, skill_id
+        assert (
+            "If you wrote these `review_findings`, record every blocking finding as upheld."
+            in contract
+        ), skill_id
+        # In the output list, not merely named somewhere in the file.
+        assert rulings in contract, skill_id
+        assert contract.index(f"Output `{artifact}` covering:") < contract.index(rulings), skill_id
+        assert "any upheld blocking finding makes the verdict `blocked`" in contract, skill_id
+        for hedge in HEDGES:
+            assert hedge not in contract.lower(), (skill_id, hedge)
+
+    # The commit gate must accept a finding both gates overruled, or the
+    # adjudication above deadlocks against it.
+    commit = _flat((skill_root / "commit-atomic-change" / "SKILL.md").read_text(encoding="utf-8"))
+    assert "overruled by both Architect and Critic" in commit
+    assert "independent review has no blocking findings" not in commit
+
+    for hedge in HEDGES:
+        assert hedge not in final.lower(), hedge
+        assert hedge not in reviewer.lower(), hedge
+
+
 def test_whole_workflow_degradation_is_retired_from_every_shipped_contract():
     # The coordinator running every gate on its own change produced approvals
     # nobody independent had given. Retiring it is only real if no shipped
