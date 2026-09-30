@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -89,7 +90,21 @@ def test_copilot_plugin_launcher_is_executable_and_uses_plugin_relative_paths():
     launcher = ROOT / "plugins" / "dev-workflows" / "bin" / "agent-workflows-harness"
 
     assert launcher.is_file()
-    assert launcher.stat().st_mode & 0o111
+    # A repository install receives the mode git records, which a Windows
+    # checkout cannot express on disk; the filesystem bit is only observable
+    # on POSIX.
+    rel = launcher.relative_to(ROOT).as_posix()
+    staged = subprocess.run(
+        ["git", "ls-files", "-s", "--", rel],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.split()
+    assert staged, f"git does not track {rel}; its shipped mode is unobservable"
+    assert staged[0] == "100755", f"{rel} is staged as {staged[0]}, not executable"
+    if os.name == "posix":
+        assert launcher.stat().st_mode & 0o111
     contents = launcher.read_text(encoding="utf-8")
     assert 'root=$(cd "$here/../../.." && pwd)' in contents
     assert 'exec "$venv" "$@"' in contents
