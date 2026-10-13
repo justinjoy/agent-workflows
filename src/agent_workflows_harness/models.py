@@ -5,7 +5,8 @@ import re
 
 
 SUPPORTED_REQUEST_TYPES = frozenset({"code_change"})
-SUPPORTED_PROPERTIES = frozenset(
+DOMAIN_PROPERTIES = frozenset({"security_risk", "data_change_risk", "deployment_risk"})
+SUPPORTED_PROPERTIES = DOMAIN_PROPERTIES | frozenset(
     {
         "docs_only",
         "external_service",
@@ -18,10 +19,10 @@ SUPPORTED_PROPERTIES = frozenset(
         "trivial",
     }
 )
-_NON_TRIVIAL_PROPERTIES = frozenset(
+_NON_TRIVIAL_PROPERTIES = DOMAIN_PROPERTIES | frozenset(
     {"external_service", "multi_file", "non_trivial", "touches_shared_behavior"}
 )
-_DOCS_ONLY_CONFLICTS = frozenset({"external_service", "touches_shared_behavior"})
+CODE_IMPACT_PROPERTIES = DOMAIN_PROPERTIES | frozenset({"external_service", "touches_shared_behavior"})
 _REQUEST_ID_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9_.:-]{0,127}\Z")
 
 
@@ -65,7 +66,7 @@ class RequestFacts:
             values = ", ".join(repr(prop) for prop in sorted(unknown))
             raise ValueError(f"unsupported request properties: {values}")
 
-        docs_conflicts = properties & _DOCS_ONLY_CONFLICTS
+        docs_conflicts = properties & CODE_IMPACT_PROPERTIES
         if "docs_only" in properties and docs_conflicts:
             values = ", ".join(sorted(docs_conflicts))
             raise ValueError(f"docs_only conflicts with code-impact properties: {values}")

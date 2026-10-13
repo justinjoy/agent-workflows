@@ -12,10 +12,29 @@ Every change, including documentation, is validated, independently reviewed,
 approved by Architect and Critic, and committed as an atomic unit. Every run
 reports its result, including a run a gate rejects before any commit.
 
+Optional ontology packs add security, data-change and deployment validation.
+Each selected domain check runs before review and commit, and reports evidence
+for the exact candidate. Missing required validation blocks commit.
+
 ## Included Skills
 
 - `implementation-skill`: Wirelog-based harness entrypoint that selects atomic implementation skills through PyreWire.
 - `close-open-issues-goal`: persistent workflow for reducing open repository issues to zero.
+
+## Ontology Packs
+
+```bash
+agent-workflows-harness --list-ontology-packs
+agent-workflows-harness --ontology-pack security --touches secret_handling --scope one_line
+agent-workflows-harness --ontology-pack data-change --ontology-pack deployment --touches schema_migration --touches deployment_manifest
+```
+
+Use repeated `--ontology-pack` arguments for built-in IDs or local JSON files.
+Packs extend the default core, or the replacement base supplied by `--ontology`.
+Dependencies must be supplied explicitly. The merged vocabulary is available
+with `--print-ontology`; plans include relation-level provenance in
+`ontology_composition` and `derived`.
+See [pack composition and repository extensions](docs/how-it-works.md#ontology-packs).
 
 ## Harness CLI
 

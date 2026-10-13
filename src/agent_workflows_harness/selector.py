@@ -41,6 +41,9 @@ needs_plan(Req) :- property(Req, "touches_shared_behavior").
 
 needs_broad_tests(Req) :- property(Req, "touches_shared_behavior").
 needs_broad_tests(Req) :- property(Req, "multi_file").
+needs_broad_tests(Req) :- property(Req, "security_risk").
+needs_broad_tests(Req) :- property(Req, "data_change_risk").
+needs_broad_tests(Req) :- property(Req, "deployment_risk").
 needs_broad_tests(Req) :- property(Req, "external_service").
 
 selected_skill(10, 1, 1) :-
@@ -71,6 +74,18 @@ selected_skill(60, 6, 12) :-
 selected_skill(70, 7, 7) :-
     request_type(Req, "code_change"),
     needs_broad_tests(Req).
+
+selected_skill(71, 13, 14) :-
+    request_type(Req, "code_change"),
+    property(Req, "security_risk").
+
+selected_skill(72, 14, 15) :-
+    request_type(Req, "code_change"),
+    property(Req, "data_change_risk").
+
+selected_skill(73, 15, 16) :-
+    request_type(Req, "code_change"),
+    property(Req, "deployment_risk").
 
 selected_skill(80, 8, 8) :-
     request_type(Req, "code_change").

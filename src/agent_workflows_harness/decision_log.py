@@ -10,19 +10,21 @@ from .serialization import plan_to_dict
 
 if TYPE_CHECKING:  # pragma: no cover - import cycle guard for type checkers only
     from .ontology import Derivation
+    from .ontology_packs import OntologyComposition
 
 
 def append_decision_record(
     path: str | Path,
     plan: SkillPlan,
     derivations: "Sequence[Derivation]" = (),
+    composition: "OntologyComposition | None" = None,
 ) -> None:
     """Append one durable harness decision record as JSON Lines."""
 
     record = {
         "event_type": "agent_workflow.skill_plan_selected",
         "recorded_at": datetime.now(UTC).isoformat(),
-        "plan": plan_to_dict(plan, derivations),
+        "plan": plan_to_dict(plan, derivations, composition),
     }
     _append(path, record)
 

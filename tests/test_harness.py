@@ -42,6 +42,9 @@ PINNED_SKILL_CODES = {
     "validate-final-risks": 10,
     "report-result": 11,
     "commit-atomic-change": 12,
+    "validate-security": 13,
+    "validate-data-change": 14,
+    "validate-deployment": 15,
 }
 
 

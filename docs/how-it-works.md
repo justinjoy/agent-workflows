@@ -258,7 +258,7 @@ No declared term can contain a space, a colon, or `>`, so the line splits
 unambiguously -- but that form is for reading and grepping. JSON is the surface
 to parse, and it is the one that round-trips back through `--ontology`.
 
-The bundled ontology also classifies every registered skill (`ReviewSkill`,
+The core and bundled domain packs together classify every registered skill (`ReviewSkill`,
 `TestSkill`, and so on under `ValidationSkill`). The selector rules do not use
 that hierarchy yet; it is declared so rule consolidation can be verified
 against the current per-skill rules before replacing them.
@@ -462,3 +462,114 @@ Each follow-up issue records:
 - priority rationale and dependencies, when known.
 
 The goal has no default token budget; one is supplied only when explicitly requested. A newly set goal replaces the active one, so when a goal is already active the proposal asks first and the replacement happens on the user's keypress. Do not clear, complete, or block the existing goal to make room for this one.
+
+
+### Ontology Packs
+
+The base TBox can be extended with explicit local data packs. `--ontology`
+continues to replace the entire base; it does not merge a replacement with the
+default core. Repeating `--ontology-pack` composes packs over that chosen base.
+Omitting packs preserves existing plans and the default vocabulary.
+
+```bash
+agent-workflows-harness --list-ontology-packs
+agent-workflows-harness --ontology-pack security --touches secret_handling --scope one_line
+agent-workflows-harness --ontology-pack security --ontology-pack data-change --ontology-pack deployment --touches secret_handling --touches schema_migration --touches deployment_manifest
+agent-workflows-harness --ontology-pack security --print-ontology
+```
+
+| Pack | Surfaces | Derived property | Selected validation |
+| --- | --- | --- | --- |
+| `security` | `secret_handling`, `authorization_policy`, `personal_data_flow` | `security_risk` | `validate-security` (71) |
+| `data-change` | `schema_migration`, `data_backfill`, `destructive_data_change` | `data_change_risk` | `validate-data-change` (72) |
+| `deployment` | `deployment_manifest`, `release_pipeline`, `runtime_configuration` | `deployment_risk` | `validate-deployment` (73) |
+
+Each domain risk overrides `trivial`, selects planning and broad tests, and
+selects its own validation before review (80). Multiple domains select the
+union of checks once each. Validation uses repository checks and isolated
+fixtures; it does not authorize production deployment, data mutation or real
+secret access. Required checks that fail or cannot run block commit. A check
+that does not apply needs an explanation in its result.
+
+The existing core surface `migration` retains its shared-behavior meaning.
+Use `schema_migration` with `data-change` to require data-specific validation;
+activating the pack does not silently reclassify existing core vocabulary.
+A docs-only request selects no domain checks, even when packs are active.
+A surface classified both as a document and a code-risk surface is not
+inferred as docs-only. Explicit `docs_only` combined with a code risk is still
+an input error.
+
+A repository extension can map local names to a shipped class. Save this as
+`repo-pack.json`:
+
+```json
+{
+  "id": "repository",
+  "schema_version": 1,
+  "requires": ["security"],
+  "ontology": {
+    "surface_class": [["billing_secret", "SecuritySurface"]]
+  }
+}
+```
+
+```bash
+agent-workflows-harness --ontology-pack security --ontology-pack ./repo-pack.json --touches billing_secret
+```
+
+No selector edit is needed: `billing_secret` derives `security_risk` and selects
+`validate-security`. `requires` lists pack IDs that must also be supplied; no
+pack is downloaded or activated implicitly. It checks presence and cycles,
+not authorization to reference a class. The base is not a dependency pack;
+classes supplied by the chosen base can be referenced without a `requires`
+entry. An empty/custom base is supported when the final union declares all
+referenced classes. For a replacement saved as `base.json`, use:
+
+```bash
+agent-workflows-harness --ontology base.json --ontology-pack security --touches secret_handling
+```
+
+Schema version 1 accepts exactly `id`, `schema_version`, `requires`, and
+`ontology`. IDs use the same term syntax as TBox names. `ontology` accepts the
+five TBox relations; omitted relations are empty and each supplied relation
+must be an array of two-string arrays. Packs are data only, never executable
+code. Built-in IDs take precedence over file names; use `./security` to select
+a local file literally named `security`.
+
+Composition takes the sorted set union of relations. Duplicates are harmless,
+including semantically identical definitions of the same pack ID with reordered
+or repeated relations/dependencies. Their source locations are all retained.
+Different definitions of the same ID are rejected. Multiple inheritance and
+multiple classifications are allowed. Dependency cycles, missing dependencies,
+unsupported versions/properties, malformed terms, undeclared classes and
+inheritance cycles fail with input exit 2 and source context. Reference and
+inheritance checks run on the final union, permitting cross-pack references.
+
+To fix a missing dependency, explicitly supply its pack. For an unknown
+surface, run the diagnostic's suggested command: it preserves the replacement
+base and every pack when printing the declared vocabulary. For conflicts,
+correct the named pack definitions; there is no last-writer override.
+
+`--print-ontology` honors the packs and emits only the five TBox relations, so
+its JSON round-trips through `--ontology`. A flattened TBox preserves inference
+but not the original pack metadata. `--list-ontology-packs` lists built-in IDs,
+schema versions, dependencies and surfaces, not a selection plan. It validates
+any supplied base/packs first, ignores request facts, honors `--text`, and
+warns without writing a supplied decision log or graph. It cannot be combined
+with `--print-ontology`. Both queries run without the Wirelog runtime.
+
+For pack-enabled plans, `ontology_composition` separately records the base,
+pack IDs/versions/dependencies/source locations and providers of every relation.
+Providers are `base` or `pack:<id>`, keeping IDs separate from the base identity.
+Each derivation's `provenance` lists the actual explanation's relationship
+providers, including its terminal property mapping. Documentation-only
+inference lists the touched documents' classification chains. Multiple valid
+surface explanations choose the shortest chain, with a lexical tie break,
+independently of evaluation row order. Provenance shows that chosen proof,
+while composition retains all declared relationships.
+
+Decision logs contain the same plan and composition. DOT relationship tooltips
+show all providers, and the graph title names pack versions and source paths;
+selection edges retain the actual selector reasons. Text plans print the
+composition metadata before the usual derivations and steps. Pack-free output
+omits these additions.

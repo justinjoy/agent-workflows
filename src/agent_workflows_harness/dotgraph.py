@@ -181,7 +181,7 @@ def build_dot(
         )
     )
 
-    _relation(emit, "surface_class", ontology.surface_class, "ind", "cls", derived_edges)
+    _relation(emit, "surface_class", ontology.surface_class, "ind", "cls", derived_edges, sources=ontology.sources)
     _relation(
         emit,
         "sub_class_of",
@@ -189,6 +189,7 @@ def build_dot(
         "cls",
         "cls",
         derived_edges,
+        sources=ontology.sources,
         label="⊑",
         style="dashed",
         color="#3f6fb0",
@@ -200,9 +201,10 @@ def build_dot(
         "cls",
         "prop",
         derived_edges,
+        sources=ontology.sources,
         color="#4e7a3a",
     )
-    _relation(emit, "scope_property", ontology.scope_property, "scope", "prop", derived_edges)
+    _relation(emit, "scope_property", ontology.scope_property, "scope", "prop", derived_edges, sources=ontology.sources)
     _relation(
         emit,
         "skill_class",
@@ -210,6 +212,7 @@ def build_dot(
         "skill",
         "cls",
         derived_edges,
+        sources=ontology.sources,
         style="dotted",
         color="#b3a5c9",
     )
@@ -386,10 +389,12 @@ def _relation(
     right_kind: str,
     derived_edges: set[tuple[str, str]],
     *,
+    sources=(),
     label: str | None = None,
     style: str | None = None,
     color: str | None = None,
 ) -> None:
+    providers = {(row.relation, row.left, row.right): row.providers for row in sources}
     rows = sorted(rows)
     if not rows:
         return
@@ -397,6 +402,8 @@ def _relation(
     for left, right in rows:
         src, dst = _node(left_kind, left), _node(right_kind, right)
         attrs: dict[str, str] = {"label": label if label is not None else name}
+        if (name, left, right) in providers:
+            attrs["tooltip"] = "providers: " + ", ".join(providers[(name, left, right)])
         if style is not None:
             attrs["style"] = style
         if color is not None:

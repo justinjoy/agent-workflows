@@ -1,0 +1,44 @@
+{
+  "id": "security",
+  "schema_version": 1,
+  "requires": [],
+  "ontology": {
+    "sub_class_of": [
+      [
+        "SecuritySurface",
+        "Surface"
+      ],
+      [
+        "ValidationSkill",
+        "Skill"
+      ]
+    ],
+    "surface_class": [
+      [
+        "secret_handling",
+        "SecuritySurface"
+      ],
+      [
+        "authorization_policy",
+        "SecuritySurface"
+      ],
+      [
+        "personal_data_flow",
+        "SecuritySurface"
+      ]
+    ],
+    "skill_class": [
+      [
+        "validate-security",
+        "ValidationSkill"
+      ]
+    ],
+    "property_of_class": [
+      [
+        "SecuritySurface",
+        "security_risk"
+      ]
+    ],
+    "scope_property": []
+  }
+}

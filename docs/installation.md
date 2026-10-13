@@ -253,3 +253,18 @@ documentation-only request has no additional risk facts. Review, final
 Architect and Critic validation, and an atomic commit remain mandatory. This
 confirms that Wirelog, through PyreWire, selected the documentation workflow
 rather than relying on free-form skill choice.
+
+
+### Pack resources
+
+The Python wheel includes the `security`, `data-change`, and `deployment` JSON
+packs as package data; they load through `importlib.resources` without a source
+checkout. The source distribution includes the same resources and the plugin's
+`validate-security`, `validate-data-change`, and `validate-deployment` skills.
+Plugin hosts discover these skills from the shared `skills/` tree and use the
+installed harness for pack resolution. Runtime and plugin should come from the
+same revision when using new domain checks.
+
+After installation, `agent-workflows-harness --list-ontology-packs` lists the
+available built-ins. Repository-specific JSON packs are local files supplied
+with `--ontology-pack`; no remote registry or download is involved.

@@ -7,3 +7,4 @@ include .gemini-plugin/marketplace.json
 recursive-include docs *.md *.svg
 recursive-include plugins *.md *.json *.yaml
 include plugins/dev-workflows/bin/agent-workflows-harness
+recursive-include src/agent_workflows_harness/ontology_packs *.json

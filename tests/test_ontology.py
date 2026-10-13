@@ -143,8 +143,11 @@ def test_ontology_rejects_malformed_terms():
         )
 
 
-def test_default_ontology_classifies_every_registry_skill():
-    classified = {skill_id for skill_id, _ in DEFAULT_ONTOLOGY.skill_class}
+def test_bundled_ontologies_classify_every_registry_skill():
+    from agent_workflows_harness.ontology_packs import BUILTIN_PACKS, compose_ontology, load_pack
+
+    ontology = compose_ontology([load_pack(name) for name in BUILTIN_PACKS]).ontology
+    classified = {skill_id for skill_id, _ in ontology.skill_class}
 
     assert classified == {skill.skill_id for skill in SKILLS}
 

@@ -1,0 +1,44 @@
+{
+  "id": "deployment",
+  "schema_version": 1,
+  "requires": [],
+  "ontology": {
+    "sub_class_of": [
+      [
+        "DeploymentSurface",
+        "Surface"
+      ],
+      [
+        "ValidationSkill",
+        "Skill"
+      ]
+    ],
+    "surface_class": [
+      [
+        "deployment_manifest",
+        "DeploymentSurface"
+      ],
+      [
+        "release_pipeline",
+        "DeploymentSurface"
+      ],
+      [
+        "runtime_configuration",
+        "DeploymentSurface"
+      ]
+    ],
+    "skill_class": [
+      [
+        "validate-deployment",
+        "ValidationSkill"
+      ]
+    ],
+    "property_of_class": [
+      [
+        "DeploymentSurface",
+        "deployment_risk"
+      ]
+    ],
+    "scope_property": []
+  }
+}

@@ -11,6 +11,7 @@ from .models import RequestFacts
 from .decision_log import append_decision_record, append_failure_record
 from .dotgraph import BUNDLED_SOURCE, write_graph
 from .ontology import DEFAULT_ONTOLOGY, derive, load_ontology
+from .ontology_packs import compose_ontology, load_pack, list_builtin_packs
 from .serialization import plan_to_dict
 from .selector import HarnessError, SelectorRuleConflictError, select_plan
 
@@ -142,7 +143,7 @@ def _graph(args: argparse.Namespace, ontology, plan, derivations) -> None:
             ontology,
             plan,
             derivations,
-            source=args.ontology or BUNDLED_SOURCE,
+            source=args.ontology_source,
         )
     except (OSError, ValueError) as exc:
         print(f"graph not written: {args.graph!r}: {exc}", file=sys.stderr)
@@ -200,11 +201,20 @@ def _parser() -> argparse.ArgumentParser:
         help="JSON TBox document replacing the bundled default ontology.",
     )
     parser.add_argument(
+        "--ontology-pack", action="append", default=[], metavar="NAME_OR_PATH",
+        help="Compose an explicit built-in or local JSON pack over the base. Repeatable; dependencies must also be supplied.",
+    )
+    parser.add_argument(
+        "--list-ontology-packs", action="store_true",
+        help="List built-in pack IDs, versions, dependencies and surfaces without selecting a plan. Cannot combine with --print-ontology.",
+    )
+    parser.add_argument(
         "--print-ontology",
         action="store_true",
         help=(
             "Print the active TBox and exit without evaluating any facts. "
-            "Honours --ontology and --text; a supplied --decision-log warns "
+            "Honours --ontology and --text, and composes --ontology-pack; "
+            "cannot combine with --list-ontology-packs; a supplied --decision-log warns "
             "and writes nothing; a supplied --graph warns and writes nothing "
             "too, because there is no selection to graph; the request text, "
             "--property, --touches, and --scope are ignored."
@@ -246,6 +256,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(argv)
     request_text = " ".join(args.request)
+    if args.list_ontology_packs and args.print_ontology:
+        parser.error("--list-ontology-packs cannot combine with --print-ontology")
     if args.graph is not None and not (args.graph and Path(args.graph).is_dir()):
         # `nargs="?"` cannot tell a directory from request text, and
         # `--graph "refactor auth"` binds the text to the flag: the request
@@ -263,10 +275,23 @@ def main(argv: list[str] | None = None) -> int:
         )
     try:
         ontology = load_ontology(args.ontology) if args.ontology else None
+        composition = compose_ontology(
+            [load_pack(name) for name in args.ontology_pack],
+            ontology or DEFAULT_ONTOLOGY,
+            base_source=args.ontology or BUNDLED_SOURCE,
+        )
+        ontology = composition.ontology
+        args.ontology_source = args.ontology or BUNDLED_SOURCE
+        if composition.packs:
+            args.ontology_source += " + " + ", ".join(
+                f"{p['provider']} (schema {p['schema_version']}; {', '.join(p['sources'])})"
+                for p in composition.to_dict()["packs"]
+            )
     except (OSError, ValueError) as exc:
         parser.error(str(exc))
 
-    if args.print_ontology:
+    if args.print_ontology or args.list_ontology_packs:
+        query = "--print-ontology" if args.print_ontology else "--list-ontology-packs"
         # After the load, so an --ontology file that fails validation still
         # exits 2: a document that did not load cannot be printed. Before
         # derive(), so printing the vocabulary never needs the Wirelog runtime
@@ -281,14 +306,22 @@ def main(argv: list[str] | None = None) -> int:
             # in silence. There is no selection to record here, so say that
             # rather than leave the caller believing a trace was written.
             print(
-                "decision log not written: --print-ontology selects nothing to record",
+                f"decision log not written: {query} selects nothing to record",
                 file=sys.stderr,
             )
         if args.graph is not None:
             print(
-                "graph not written: --print-ontology selects nothing to graph",
+                f"graph not written: {query} selects nothing to graph",
                 file=sys.stderr,
             )
+        if args.list_ontology_packs:
+            document = {"packs": list_builtin_packs()}
+            if args.text:
+                for pack in document["packs"]:
+                    print(f"{pack['id']}: schema {pack['schema_version']}; surfaces: {', '.join(pack['surfaces'])}")
+            else:
+                print(json.dumps(document, indent=2, sort_keys=True))
+            return 0
         document = (ontology or DEFAULT_ONTOLOGY).to_dict()
         if args.text:
             # `relation: left -> right`, one row per line. No term can contain
@@ -326,6 +359,9 @@ def main(argv: list[str] | None = None) -> int:
             # not what breaks. The `=` form is unambiguous and all three shells
             # pass it through.
             printer = f"--ontology={_quote_path(args.ontology)} --print-ontology"
+        if args.ontology_pack:
+            pack_flags = " ".join(f"--ontology-pack={_quote_path(name)}" for name in args.ontology_pack)
+            printer = f"{pack_flags} {printer}"
         parser.error(f"{exc}; {HINT_PREFIX}{printer}{HINT_SUFFIX}")
     except Exception as exc:
         # Loading libwirelog fails here before the selector is ever reached.
@@ -363,6 +399,8 @@ def main(argv: list[str] | None = None) -> int:
     # Print the plan before recording it, so an unwritable log cannot suppress
     # a plan the selector already computed.
     if args.text:
+        if composition.packs:
+            print("ontology_composition: " + json.dumps(composition.to_dict(), sort_keys=True))
         for item in derivations:
             print(f"    {item.request_property} <= {item.source} # {' -> '.join(item.path)}")
         for skill in plan.selected:
@@ -373,9 +411,12 @@ def main(argv: list[str] | None = None) -> int:
         for skill in plan.blocked:
             print(f"blocked: {skill.skill_id} # {skill.reason}")
     else:
-        print(json.dumps(plan_to_dict(plan, derivations), indent=2, sort_keys=True))
+        print(json.dumps(plan_to_dict(plan, derivations, composition), indent=2, sort_keys=True))
 
-    _record(args.decision_log, append_decision_record, plan, derivations)
+    if composition.packs:
+        _record(args.decision_log, append_decision_record, plan, derivations, composition)
+    else:
+        _record(args.decision_log, append_decision_record, plan, derivations)
     _graph(args, ontology or DEFAULT_ONTOLOGY, plan, derivations)
     return 0
 
