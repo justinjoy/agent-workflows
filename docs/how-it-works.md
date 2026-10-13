@@ -150,7 +150,7 @@ closed by using the non-trivial plan manually and reporting that the runtime
 selector could not execute. See [Harness command resolution](installation.md#harness-command-resolution)
 for the exact platform-specific commands.
 
-The Python runtime depends on `pyrewire>=1.0.4,<2.0`. Runtime-backed tests are
+The Python runtime depends on `pyrewire>=1.1.2,<2.0`. Runtime-backed tests are
 required and fail when PyreWire or its native Wirelog library cannot load; a
 load failure is not treated as a skipped optional integration.
 

@@ -193,7 +193,7 @@ py -3.11 -m venv .venv
 .venv\Scripts\agent-workflows-harness.exe --property trivial
 ```
 
-Installing the package also installs `pyrewire>=1.0.4,<2.0`. Contributors who
+Installing the package also installs `pyrewire>=1.1.2,<2.0`. Contributors who
 need the test and build dependencies can install `-e ".[dev]"` instead.
 
 When running the skill in a different repository, either expose
