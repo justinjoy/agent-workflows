@@ -11,6 +11,9 @@ Required evidence:
 
 - focused tests passed
 - broad tests passed when selected
+- every selected domain validation (`security_validation`,
+  `data_change_validation`, `deployment_validation`) returned `approved` for
+  the same candidate; missing, failed or unavailable required checks block commit
 - no blocking review finding stands: each was fixed through a new candidate and
   re-review, or overruled by both Architect and Critic in their validations
 - Architect design validation passed

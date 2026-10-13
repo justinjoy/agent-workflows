@@ -6,9 +6,14 @@ from .models import SkillPlan
 
 if TYPE_CHECKING:  # pragma: no cover - import cycle guard for type checkers only
     from .ontology import Derivation
+    from .ontology_packs import OntologyComposition
 
 
-def plan_to_dict(plan: SkillPlan, derivations: "Sequence[Derivation]" = ()) -> dict:
+def plan_to_dict(
+    plan: SkillPlan,
+    derivations: "Sequence[Derivation]" = (),
+    composition: "OntologyComposition | None" = None,
+) -> dict:
     """Convert a skill plan into stable JSON-compatible data.
 
     ``derivations`` records how ontology-backed facts were inferred. The key is
@@ -39,4 +44,6 @@ def plan_to_dict(plan: SkillPlan, derivations: "Sequence[Derivation]" = ()) -> d
     }
     if derivations:
         data["derived"] = [item.to_dict() for item in derivations]
+    if composition is not None and composition.packs:
+        data["ontology_composition"] = composition.to_dict()
     return data

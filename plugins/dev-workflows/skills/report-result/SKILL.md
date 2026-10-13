@@ -28,6 +28,10 @@ Report:
 - whether overruling a blocking finding was unavailable because the Reviewer
   also held a final gate
 - validation commands and results
+- each selected domain validation (`security_validation`,
+  `data_change_validation`, `deployment_validation`): candidate tree, explicit
+  verdict, evidence and unavailable checks; a missing or blocked result prevents
+  commit
 - every atomic commit hash, subject, committed path set, and approved tree or
   diff digest
 - pull request URL when applicable

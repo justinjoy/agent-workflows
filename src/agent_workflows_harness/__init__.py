@@ -9,6 +9,13 @@ from .ontology import (
     derived_properties,
     load_ontology,
 )
+from .ontology_packs import (
+    OntologyPack,
+    OntologyComposition,
+    compose_ontology,
+    load_pack,
+    list_builtin_packs,
+)
 from .selector import (
     HarnessError,
     SelectorRuleConflictError,
@@ -22,6 +29,11 @@ __all__ = [
     "Derivation",
     "HarnessError",
     "Ontology",
+    "OntologyPack",
+    "OntologyComposition",
+    "compose_ontology",
+    "load_pack",
+    "list_builtin_packs",
     "RequestFacts",
     "SelectedSkill",
     "SelectorRuleConflictError",

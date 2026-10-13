@@ -3,10 +3,10 @@ from __future__ import annotations
 import json
 import re
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
-from .models import SUPPORTED_PROPERTIES
+from .models import CODE_IMPACT_PROPERTIES, SUPPORTED_PROPERTIES
 
 
 _TERM_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,127}\Z")
@@ -14,6 +14,20 @@ _TERM_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,127}\Z")
 #: Class whose individuals describe documentation surfaces. A request that
 #: touches only these is documentation-only.
 DOC_SURFACE = "DocSurface"
+
+
+@dataclass(frozen=True)
+class RelationSource:
+    """Providers of one relation; metadata deliberately excluded from TBox JSON."""
+
+    relation: str
+    left: str
+    right: str
+    providers: tuple[str, ...]
+
+    def to_dict(self) -> dict:
+        return {"relation": self.relation, "left": self.left, "right": self.right,
+                "providers": list(self.providers)}
 
 
 @dataclass(frozen=True)
@@ -30,6 +44,7 @@ class Ontology:
     skill_class: tuple[tuple[str, str], ...]
     property_of_class: tuple[tuple[str, str], ...]
     scope_property: tuple[tuple[str, str], ...]
+    sources: tuple[RelationSource, ...] = field(default=(), compare=False, repr=False)
 
     def __post_init__(self) -> None:
         for label, pairs in (
@@ -233,13 +248,17 @@ class Derivation:
     request_property: str
     source: str
     path: tuple[str, ...]
+    provenance: tuple[RelationSource, ...] = ()
 
     def to_dict(self) -> dict:
-        return {
+        data = {
             "property": self.request_property,
             "from": self.source,
             "path": " -> ".join(self.path),
         }
+        if self.provenance:
+            data["provenance"] = [row.to_dict() for row in self.provenance]
+        return data
 
 
 def subsumption_path(ontology: Ontology, individual: str, target: str) -> tuple[str, ...]:
@@ -277,6 +296,7 @@ _RULES = """
 .decl derived_surface_property(prop: int32, cls: int32, ind: int32)
 .decl derived_scope_property(prop: int32, sc: int32)
 .decl derived_docs_only(req: int32)
+.decl code_impact_property(prop: int32)
 
 isa(I, C) :- surface_class(I, C).
 isa(I, S) :- isa(I, C), sub_class_of(C, S).
@@ -292,6 +312,7 @@ derived_scope_property(P, S) :-
 
 doc_touch(R) :- touches(R, I), isa(I, {doc_code}).
 non_doc_touch(R) :- touches(R, I), !isa(I, {doc_code}).
+non_doc_touch(R) :- touches(R, I), derived_surface_property(P, C, I), code_impact_property(P).
 derived_docs_only(R) :- doc_touch(R), !non_doc_touch(R).
 """
 
@@ -333,6 +354,9 @@ def build_program(
         lines.append(f"property_of_class({symbols.code(cls)}, {symbols.code(prop)}).")
     for scope, prop in ontology.scope_property:
         lines.append(f"scope_property({symbols.code(scope)}, {symbols.code(prop)}).")
+    for prop in sorted(CODE_IMPACT_PROPERTIES):
+        if symbols.known(prop):
+            lines.append(f"code_impact_property({symbols.code(prop)}).")
     for individual in touches:
         lines.append(f"touches(1, {symbols.code(individual)}).")
     for scope in scopes:
@@ -389,31 +413,52 @@ def derive(
         finally:
             result.close()
 
-    derivations: dict[tuple[str, str], Derivation] = {}
+    derivations: dict[tuple[str, str, str], Derivation] = {}
     for prop_code, cls_code, ind_code in surface_rows:
         prop = symbols.term(prop_code)
         cls = symbols.term(cls_code)
         individual = symbols.term(ind_code)
-        derivations[(prop, individual)] = Derivation(
+        item = Derivation(
             request_property=prop,
             source=f"touches(req, {individual})",
             path=subsumption_path(active, individual, cls),
         )
+        key = ("surface", prop, individual)
+        previous = derivations.get(key)
+        if previous is None or (len(item.path), item.path) < (len(previous.path), previous.path):
+            derivations[key] = item
     for prop_code, scope_code in scope_rows:
         prop = symbols.term(prop_code)
         scope = symbols.term(scope_code)
-        derivations[(prop, scope)] = Derivation(
+        derivations[("scope", prop, scope)] = Derivation(
             request_property=prop,
             source=f"scope(req, {scope})",
             path=(scope, prop),
         )
     if docs_only:
         touched_docs = ", ".join(sorted(touched))
-        derivations[("docs_only", DOC_SURFACE)] = Derivation(
+        derivations[("docs", "docs_only", DOC_SURFACE)] = Derivation(
             request_property="docs_only",
             source=f"touches(req, {touched_docs})",
             path=(DOC_SURFACE, "docs_only"),
         )
+
+    if active.sources:
+        sources = {(row.relation, row.left, row.right): row for row in active.sources}
+        for key, item in derivations.items():
+            edges = []
+            if key[0] == "scope":
+                edges = [("scope_property", *item.path)]
+            elif key[0] == "docs":
+                for individual in sorted(set(touched)):
+                    path = subsumption_path(active, individual, DOC_SURFACE)
+                    edges.append(("surface_class", path[0], path[1]))
+                    edges.extend(("sub_class_of", a, b) for a, b in zip(path[1:], path[2:]))
+            else:
+                edges = [("surface_class", item.path[0], item.path[1])]
+                edges.extend(("sub_class_of", a, b) for a, b in zip(item.path[1:], item.path[2:]))
+                edges.append(("property_of_class", item.path[-1], item.request_property))
+            derivations[key] = replace(item, provenance=tuple(sources[edge] for edge in dict.fromkeys(edges)))
 
     return tuple(
         sorted(

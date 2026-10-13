@@ -24,6 +24,9 @@ TERMINATION_PHRASE_BY_KIND = {
     "harness_error": "a harness defect",
 }
 EXPECTED_ATOMIC_SKILLS = {
+    "validate-security",
+    "validate-data-change",
+    "validate-deployment",
     "classify-change-risk",
     "commit-atomic-change",
     "create-implementation-plan",
@@ -1034,6 +1037,12 @@ def test_built_artifacts_match_runtime_and_plugin_distribution_contract(tmp_path
         "plugins/dev-workflows/.cursor-plugin/plugin.json",
         "plugins/dev-workflows/skills/report-result/SKILL.md",
         "plugins/dev-workflows/skills/commit-atomic-change/SKILL.md",
+        "plugins/dev-workflows/skills/validate-security/SKILL.md",
+        "plugins/dev-workflows/skills/validate-data-change/SKILL.md",
+        "plugins/dev-workflows/skills/validate-deployment/SKILL.md",
+        "src/agent_workflows_harness/ontology_packs/security.json",
+        "src/agent_workflows_harness/ontology_packs/data-change.json",
+        "src/agent_workflows_harness/ontology_packs/deployment.json",
     }
     assert all(
         any(member.endswith(suffix) for member in sdist_members)
@@ -1046,6 +1055,36 @@ def test_built_artifacts_match_runtime_and_plugin_distribution_contract(tmp_path
     assert "agent_workflows_harness/selector.py" in wheel_members
     assert any(name.endswith(".dist-info/entry_points.txt") for name in wheel_members)
     assert not any(name.startswith("plugins/") for name in wheel_members)
+    assert {
+        "agent_workflows_harness/ontology_packs/security.json",
+        "agent_workflows_harness/ontology_packs/data-change.json",
+        "agent_workflows_harness/ontology_packs/deployment.json",
+    } <= wheel_members
+
+    # Install the built wheel away from the checkout and explicitly assert the
+    # imported origin; an editable source import would hide missing resources.
+    installed = tmp_path / "installed"
+    subprocess.run([sys.executable, "-m", "pip", "install", "--no-deps", "--no-compile",
+                    "--target", str(installed), str(wheel)], check=True, capture_output=True)
+    script = """
+import json, sys
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+import agent_workflows_harness
+assert Path(agent_workflows_harness.__file__).resolve().is_relative_to(Path(sys.argv[1]).resolve())
+from agent_workflows_harness.cli import main
+raise SystemExit(main(['--ontology-pack', 'security', '--ontology-pack', 'data-change',
+    '--ontology-pack', 'deployment', '--touches', 'secret_handling',
+    '--touches', 'schema_migration', '--touches', 'deployment_manifest']))
+"""
+    ran = subprocess.run([sys.executable, "-I", "-c", script, str(installed)],
+                         cwd=tmp_path, check=True, text=True, capture_output=True)
+    installed_plan = json.loads(ran.stdout)
+    assert {row["skill_id"] for row in installed_plan["selected"]} >= {
+        "validate-security", "validate-data-change", "validate-deployment"}
+    assert {p["id"] for p in installed_plan["ontology_composition"]["packs"]} == {
+        "security", "data-change", "deployment"}
+
 
 
 def test_every_flag_the_documents_name_is_a_flag_the_cli_accepts():
@@ -1112,3 +1151,48 @@ def test_the_contract_routes_a_rejected_fact_at_the_printable_vocabulary():
     # to branch on the exit code has to say so.
     assert "Exit `0` therefore means the command answered the question it" in skill
     assert "its document carries no `selected` key" in skill
+
+
+def test_domain_skills_require_evidence_and_block_unavailable_checks():
+    skills = ROOT / "plugins/dev-workflows/skills"
+    expected = {"validate-security": "security_validation",
+                "validate-data-change": "data_change_validation",
+                "validate-deployment": "deployment_validation"}
+    for skill_id, artifact in expected.items():
+        assert SKILL_BY_ID[skill_id].output == artifact
+        contract = _flat((skills / skill_id / "SKILL.md").read_text())
+        assert f"Return `{artifact}`" in contract
+        assert "approved_candidate_tree" in contract
+        assert "required validation cannot run" in contract
+        assert "return `blocked`" in contract
+        assert "Selection does not authorize deployment" in contract
+        for integration in ("implementation-skill", "report-result", "commit-atomic-change"):
+            assert artifact in (skills / integration / "SKILL.md").read_text()
+
+
+def test_documented_pack_commands_and_repository_example_execute(tmp_path, capsys):
+    doc = (ROOT / "docs/how-it-works.md").read_text()
+    examples = [json.loads(block) for block in re.findall(r"```json\n(.*?)\n```", doc, re.DOTALL)
+                if '"schema_version"' in block]
+    assert len(examples) == 1
+    repository_pack = tmp_path / "repo-pack.json"
+    repository_pack.write_text(json.dumps(examples[0]))
+    import shlex
+    executed = []
+    for block in re.findall(r"^```bash\n(.*?)^```", doc, re.DOTALL | re.MULTILINE):
+        for line in block.splitlines():
+            if not line.startswith("agent-workflows-harness ") or "--ontology-pack" not in line:
+                continue
+            argv = shlex.split(line)[1:]
+            argv = [str(repository_pack) if arg == "./repo-pack.json" else arg for arg in argv]
+            if "base.json" in argv:
+                base = tmp_path / "base.json"
+                base.write_text(json.dumps({"sub_class_of": [["Local", "Surface"]]}))
+                argv = [str(base) if arg == "base.json" else arg for arg in argv]
+            assert cli.main(argv) == 0
+            result = json.loads(capsys.readouterr().out)
+            if "--print-ontology" not in argv:
+                assert any(s["skill_id"].startswith("validate-") and s["order"] < 80
+                           for s in result["selected"])
+            executed.append(argv)
+    assert len(executed) == 5

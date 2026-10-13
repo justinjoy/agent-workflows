@@ -1,0 +1,44 @@
+{
+  "id": "data-change",
+  "schema_version": 1,
+  "requires": [],
+  "ontology": {
+    "sub_class_of": [
+      [
+        "DataChangeSurface",
+        "Surface"
+      ],
+      [
+        "ValidationSkill",
+        "Skill"
+      ]
+    ],
+    "surface_class": [
+      [
+        "schema_migration",
+        "DataChangeSurface"
+      ],
+      [
+        "data_backfill",
+        "DataChangeSurface"
+      ],
+      [
+        "destructive_data_change",
+        "DataChangeSurface"
+      ]
+    ],
+    "skill_class": [
+      [
+        "validate-data-change",
+        "ValidationSkill"
+      ]
+    ],
+    "property_of_class": [
+      [
+        "DataChangeSurface",
+        "data_change_risk"
+      ]
+    ],
+    "scope_property": []
+  }
+}

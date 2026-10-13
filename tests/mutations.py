@@ -985,6 +985,29 @@ entry(
 )
 
 
+entry(
+    name="domain-security-selection",
+    target="src/agent_workflows_harness/selector.py",
+    module="agent_workflows_harness.selector",
+    old='    property(Req, "security_risk").',
+    new='    property(Req, "never_security_risk").',
+    test="tests/test_ontology_packs.py::test_all_domains_select_once_in_order_with_deterministic_plan",
+    expect="AssertionError: all three domain validations must be selected once in order",
+    note="A loaded security vocabulary must select its validation, not merely print the domain property.",
+)
+
+entry(
+    name="domain-risk-normalization",
+    target="src/agent_workflows_harness/models.py",
+    module="agent_workflows_harness.models",
+    old="_NON_TRIVIAL_PROPERTIES = DOMAIN_PROPERTIES | frozenset(",
+    new="_NON_TRIVIAL_PROPERTIES = frozenset(",
+    test="tests/test_ontology_packs.py::test_domain_risks_override_explicit_trivial_hints",
+    expect="AssertionError: domain risk must override trivial",
+    note="Domain risk must defeat a trivial hint so planning and critique cannot be skipped.",
+)
+
+
 def load_table() -> list[Entry]:
     """The table, as data. Imported by the self-check for its lint."""
 

@@ -21,11 +21,29 @@ The old monolithic procedure is now split into smaller skills:
 - `implement-atomic-change`
 - `run-focused-tests`
 - `run-broad-tests`
+- `validate-security` (when selected)
+- `validate-data-change` (when selected)
+- `validate-deployment` (when selected)
 - `review-diff`
 - `validate-final-design`
 - `validate-final-risks`
 - `commit-atomic-change`
 - `report-result`
+
+Domain ontology packs are opt-in. Discover the shipped vocabulary and select
+applicable packs before classifying a domain change:
+
+```bash
+agent-workflows-harness --list-ontology-packs
+agent-workflows-harness --ontology-pack security --ontology-pack data-change --touches secret_handling --touches schema_migration --scope one_line
+agent-workflows-harness --ontology-pack deployment --print-ontology
+```
+
+Repeat `--ontology-pack` with a built-in ID or local pack JSON path. Supply all
+`requires` dependencies explicitly; `--ontology` still replaces the base.
+Unknown vocabulary diagnostics preserve the selected packs: run the printed
+hint to inspect that same vocabulary. `--list-ontology-packs` exits `0` without
+a plan, like `--print-ontology`; do not treat either output as selected skills.
 
 The workflow still uses four roles when the selected plan requires them:
 
@@ -175,6 +193,16 @@ Do not batch unrelated fixes into the same unit.
 Run `run-focused-tests` when selected. Run `run-broad-tests` when the plan
 selects it because shared behavior, public workflows, persistence, network, or
 cross-module code changed.
+
+When selected, run `validate-security`, `validate-data-change`, and
+`validate-deployment` after tests and before review, in plan order. Record
+`security_validation`, `data_change_validation`, and `deployment_validation`
+for the same `approved_candidate_tree`. The coordinator may execute these
+checks; they do not replace independent judgment gates. Every selected domain
+validation must return `approved`; a missing, failed or unavailable required
+check is `blocked`, stops the commit gate, and must be reported. Selection does
+not authorize production deployment, data changes or real-secret access.
+Candidate fixes invalidate these results as well as the other validation.
 
 ### 7. Reviewer Pass
 
@@ -420,7 +448,8 @@ In the final response, report:
   also held a final gate
 - every atomic commit hash, subject, committed paths, and approved digest
 - PR URL if opened
-- validation commands and results
+- validation commands and results, including every selected domain validation
+  artifact, candidate tree, verdict, and unavailable checks
 - remaining untracked/unrelated files, if any
 - which agent produced each role artifact, or `coordinator, degraded` when the
   coordinator produced it, so a pass that never ran independently cannot be
