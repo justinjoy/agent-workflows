@@ -111,7 +111,7 @@ def test_classifier_uses_word_boundaries_and_canonical_risk():
 def test_required_pyrewire_version_is_installed():
     installed = tuple(int(part) for part in version("pyrewire").split(".")[:3])
 
-    assert installed >= (1, 0, 4)
+    assert installed >= (1, 1, 2)
 
 
 def test_trivial_code_change_gets_review_consensus_and_commit_gates():

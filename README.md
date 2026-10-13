@@ -39,7 +39,7 @@ See [pack composition and repository extensions](docs/how-it-works.md#ontology-p
 ## Harness CLI
 
 Install the Python package when you want to run the selector locally. The
-package requires PyreWire 1.0.4 or newer within the stable 1.x API line:
+package requires PyreWire 1.1.2 or newer within the stable 1.x API line:
 
 ```bash
 python3 -m pip install -e ".[dev]"
