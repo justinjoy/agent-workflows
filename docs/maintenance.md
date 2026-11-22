@@ -26,6 +26,8 @@ Root marketplace files expose the plugin to each host. Update them when the plug
 Before committing documentation or workflow changes:
 
 - Confirm README links still resolve.
+- When `README.md` changes, update `README.ko.md` to match, or note that the
+  translation lags. The flag test reads both files, but only for CLI flags.
 - Confirm install commands in `docs/installation.md` still match the supported hosts.
 - Search for stale skill names or old invocation examples.
 - Review the diff to ensure plugin manifests and skill files changed only when intended.

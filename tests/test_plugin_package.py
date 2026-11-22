@@ -1100,6 +1100,7 @@ def test_every_flag_the_documents_name_is_a_flag_the_cli_accepts():
 
     sources = [
         ROOT / "README.md",
+        ROOT / "README.ko.md",
         ROOT / "docs" / "how-it-works.md",
         ROOT / "plugins" / "dev-workflows" / "skills" / "implementation-skill" / "SKILL.md",
     ]
